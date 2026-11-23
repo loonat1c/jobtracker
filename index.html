@@ -13,8 +13,8 @@
 [data-pal=ocean][data-mode=light]{--bg:#edf3fa;--s1:#ffffff;--s2:#dde8f5;--line:rgba(20,40,80,.15);--text:#14233a;--mut:#5d7089;--acc:#1b6ad0;--on:#ffffff;--ok:#168a5e;--bad:#c8402f;--blue:#1b6ad0;--vio:#6a46c2}
 [data-pal=mint][data-mode=dark]{--bg:#1c2823;--s1:#25362f;--s2:#2f443b;--line:rgba(255,255,255,.12);--text:#e8f5ee;--mut:#93ada1;--acc:#62d9a3;--on:#05231a;--ok:#62d9a3;--bad:#f27763;--blue:#7ab9f1;--vio:#bb9df3}
 [data-pal=mint][data-mode=light]{--bg:#edf6f0;--s1:#ffffff;--s2:#dbece2;--line:rgba(10,50,30,.15);--text:#12281e;--mut:#587367;--acc:#178a5a;--on:#ffffff;--ok:#178a5a;--bad:#c8442f;--blue:#2a6fc2;--vio:#6e49c0}
-[data-mode=dark]{color-scheme:dark}
-[data-mode=light]{color-scheme:light}
+[data-mode=dark]{color-scheme:dark;--hi:inset 0 1px 0 rgba(255,255,255,.17),inset 0 0 0 1px rgba(255,255,255,.03);--sh:0 24px 48px -28px rgba(0,0,0,.8);--aur:1}
+[data-mode=light]{color-scheme:light;--hi:inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 1px rgba(255,255,255,.5);--sh:0 24px 48px -30px rgba(40,55,90,.4);--aur:.6}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font:15px/1.5 Onest,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
@@ -47,7 +47,7 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 .jobs{display:grid;gap:10px}
 .job{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:14px 16px;background:var(--s1);border:1px solid var(--line);border-left:4px solid var(--c,var(--mut));border-radius:var(--r);cursor:pointer}
 .job{transition:transform .25s cubic-bezier(.2,.8,.2,1),border-color .2s,background .2s}
-.job:hover{border-color:var(--acc);border-left-color:var(--c,var(--mut));transform:translateY(-2px);background:color-mix(in srgb,var(--s1) 92%,var(--acc))}
+.job:hover{border-color:var(--acc);border-left-color:var(--c,var(--mut));transform:translateY(-2px)}
 .job.in{animation:jin .45s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:var(--d,0ms)}
 @keyframes jin{from{opacity:0;transform:translateY(10px)}}
 .job b{font-size:16px}.job .meta{color:var(--mut);font-size:13.5px}
@@ -94,13 +94,50 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 .pad button:active{transform:scale(.94)}
 .pad .x{visibility:hidden}
 .hr{display:flex;align-items:center;gap:10px}
-.sws{display:flex;gap:10px;padding:0 4px}
-.sw{width:22px;height:22px;padding:0;border:0;border-radius:50%;box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--line)}
-.sw.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--text)}
-.icon{padding:7px 12px;font-size:16px;line-height:1}
 body{transition:background-color .3s}
 html.tx *{transition:background-color .35s,color .35s,border-color .35s,box-shadow .35s!important}
-@media(prefers-reduced-motion:reduce){*,html.tx *{animation:none!important;transition:none!important}}
+/* фон: медленно плывущее северное сияние */
+body::before{content:"";position:fixed;inset:-25%;z-index:-1;pointer-events:none;opacity:var(--aur,1);
+  background:radial-gradient(38% 38% at 14% 12%,color-mix(in srgb,var(--acc) 42%,transparent),transparent 70%),
+             radial-gradient(34% 34% at 88% 8%,color-mix(in srgb,var(--blue) 34%,transparent),transparent 70%),
+             radial-gradient(46% 46% at 72% 96%,color-mix(in srgb,var(--vio) 32%,transparent),transparent 70%),
+             radial-gradient(30% 30% at 6% 88%,color-mix(in srgb,var(--ok) 20%,transparent),transparent 70%);
+  animation:drift 26s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate3d(5%,4%,0) scale(1.12) rotate(4deg)}}
+/* жидкое стекло */
+header{background:color-mix(in srgb,var(--bg) 42%,transparent);backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6)}
+.box,.job,.tabs,.toast{background:color-mix(in srgb,var(--s1) 52%,transparent);backdrop-filter:blur(22px) saturate(1.7);-webkit-backdrop-filter:blur(22px) saturate(1.7);box-shadow:var(--hi),var(--sh)}
+.box{border-radius:20px}
+.modal{background:color-mix(in srgb,var(--s1) 80%,transparent);backdrop-filter:blur(26px) saturate(1.7);-webkit-backdrop-filter:blur(26px) saturate(1.7);box-shadow:var(--hi),var(--sh)}
+input,textarea,select{background:color-mix(in srgb,var(--s2) 55%,transparent)}
+/* блик, следующий за курсором */
+.job{background-image:radial-gradient(280px circle at var(--mx,50%) var(--my,-80%),rgba(255,255,255,var(--sheen,0)),transparent 65%)}
+.job:hover{--sheen:.13}
+[data-mode=light] .job:hover{--sheen:.7}
+/* основные кнопки: выпуклый «жидкий» градиент со свечением */
+button:where(:not(.ghost,.danger,.chip,.tab,.po)){background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 78%,#fff),var(--acc));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 10px 24px -12px var(--acc)}
+.chip.on,.tab.on{box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 8px 20px -10px var(--acc)}
+h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-background-clip:text;background-clip:text;color:transparent}
+/* экран входа */
+#auth{background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(28px) saturate(1.5);-webkit-backdrop-filter:blur(28px) saturate(1.5)}
+.acard{background:color-mix(in srgb,var(--s1) 55%,transparent);backdrop-filter:blur(22px) saturate(1.7);-webkit-backdrop-filter:blur(22px) saturate(1.7);border:1px solid var(--line);border-radius:28px;padding:30px 24px;box-shadow:var(--hi),var(--sh)}
+.pad button{background:color-mix(in srgb,var(--s2) 60%,transparent);box-shadow:var(--hi)}
+/* панель выбора цвета */
+.palwrap{position:relative}
+.palbtn{display:flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0}
+.dotsw{width:20px;height:20px;border-radius:50%;background:conic-gradient(var(--acc),var(--blue),var(--vio),var(--acc));box-shadow:0 0 0 2px var(--line)}
+.pop{position:absolute;right:0;top:calc(100% + 12px);min-width:250px;padding:16px;border-radius:22px;z-index:60;background:color-mix(in srgb,var(--s1) 86%,transparent);backdrop-filter:blur(24px) saturate(1.7);-webkit-backdrop-filter:blur(24px) saturate(1.7);border:1px solid var(--line);box-shadow:var(--hi),var(--sh);
+  opacity:0;visibility:hidden;transform:translateY(-6px) scale(.97);transform-origin:top right;transition:opacity .2s,transform .28s cubic-bezier(.2,.8,.2,1),visibility 0s .2s}
+.pop.open{opacity:1;visibility:visible;transform:none;transition:opacity .2s,transform .28s cubic-bezier(.2,.8,.2,1)}
+.poplab{font-size:12.5px;color:var(--mut);margin:0 2px 8px}
+.popsw{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.po{display:flex;flex-direction:column;align-items:center;gap:7px;padding:11px 4px;background:transparent;color:var(--text);border:1px solid var(--line);border-radius:16px;font-weight:500;font-size:13px}
+.po i{width:28px;height:28px;border-radius:50%;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 8px 16px -8px rgba(0,0,0,.5)}
+.po.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 15%,transparent)}
+.seg{display:flex;padding:3px;background:color-mix(in srgb,var(--s2) 70%,transparent);border-radius:999px}
+.seg button{flex:1;background:transparent;color:var(--mut);padding:8px 0;font-weight:500}
+.seg button.on{background:var(--acc);color:var(--on);box-shadow:inset 0 1px 0 rgba(255,255,255,.45)}
+@media(prefers-reduced-motion:reduce){*,html.tx *{animation:none!important;transition:none!important}body::before{animation:none!important}}
 </style>
 <script>(function(){var d=document.documentElement;d.dataset.pal=localStorage.getItem('pal')||'amber';d.dataset.mode=localStorage.getItem('mode')||(matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');})()</script>
 </head>
@@ -109,12 +146,19 @@ html.tx *{transition:background-color .35s,color .35s,border-color .35s,box-shad
   <h1>Job Tracker</h1>
   <nav class="tabs" id="tabs"><button class="tab on" data-t="jobs">Вакансии</button><button class="tab" data-t="settings">Настройки</button></nav>
   <div class="hr">
-    <div class="sws" id="sw" role="group" aria-label="Цвет оформления">
-      <button class="sw" data-p="amber" style="background:#ecbc52" title="Янтарь" aria-label="Янтарь"></button>
-      <button class="sw" data-p="ocean" style="background:#66b6ff" title="Океан" aria-label="Океан"></button>
-      <button class="sw" data-p="mint" style="background:#62d9a3" title="Мята" aria-label="Мята"></button>
+    <div class="palwrap">
+      <button class="ghost palbtn" id="palbtn" aria-haspopup="true" aria-expanded="false" title="Оформление" aria-label="Оформление"><span class="dotsw"></span></button>
+      <div class="pop" id="pop" role="dialog" aria-label="Оформление">
+        <div class="poplab">Цвет</div>
+        <div class="popsw">
+          <button class="po" data-p="amber"><i style="background:linear-gradient(135deg,#f6d27a,#e0a63a)"></i>Янтарь</button>
+          <button class="po" data-p="ocean"><i style="background:linear-gradient(135deg,#9bd0ff,#3d8fe6)"></i>Океан</button>
+          <button class="po" data-p="mint"><i style="background:linear-gradient(135deg,#9bf0c8,#2fb57d)"></i>Мята</button>
+        </div>
+        <div class="poplab">Тема</div>
+        <div class="seg"><button data-m="dark">Тёмная</button><button data-m="light">Светлая</button></div>
+      </div>
     </div>
-    <button class="ghost icon" id="mode" title="Светлая / тёмная тема" aria-label="Сменить тему"></button>
     <button class="ghost" id="logout">Выйти</button>
   </div>
 </header>
@@ -324,11 +368,24 @@ function applyTheme(pal,mode,anim){
   if(anim){root.classList.add('tx');setTimeout(()=>root.classList.remove('tx'),450);}
   root.dataset.pal=pal;root.dataset.mode=mode;
   localStorage.setItem('pal',pal);localStorage.setItem('mode',mode);
-  document.querySelectorAll('.sw').forEach(b=>{const on=b.dataset.p===pal;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
-  $('mode').textContent=mode==='dark'?'☾':'☀';
+  document.querySelectorAll('.po').forEach(b=>b.classList.toggle('on',b.dataset.p===pal));
+  document.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.m===mode));
 }
-$('sw').onclick=e=>{const b=e.target.closest('[data-p]');if(b)applyTheme(b.dataset.p,root.dataset.mode,true);};
-$('mode').onclick=()=>applyTheme(root.dataset.pal,root.dataset.mode==='dark'?'light':'dark',true);
+const closePop=()=>{$('pop').classList.remove('open');$('palbtn').setAttribute('aria-expanded','false');};
+$('palbtn').onclick=e=>{e.stopPropagation();const o=$('pop').classList.toggle('open');$('palbtn').setAttribute('aria-expanded',String(o));};
+$('pop').onclick=e=>{
+  e.stopPropagation();
+  const p=e.target.closest('[data-p]'),m=e.target.closest('[data-m]');
+  if(p)applyTheme(p.dataset.p,root.dataset.mode,true);
+  if(m)applyTheme(root.dataset.pal,m.dataset.m,true);
+};
+document.addEventListener('click',closePop);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePop();});
+$('jobs').addEventListener('pointermove',e=>{
+  const c=e.target.closest('.job');if(!c)return;
+  const r=c.getBoundingClientRect();
+  c.style.setProperty('--mx',(e.clientX-r.left)+'px');c.style.setProperty('--my',(e.clientY-r.top)+'px');
+});
 applyTheme(root.dataset.pal,root.dataset.mode,false);
 $('logout').onclick=()=>signOut(auth);
 
