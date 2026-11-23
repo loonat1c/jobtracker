@@ -137,6 +137,10 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
 .seg{display:flex;padding:3px;background:color-mix(in srgb,var(--s2) 70%,transparent);border-radius:999px}
 .seg button{flex:1;background:transparent;color:var(--mut);padding:8px 0;font-weight:500}
 .seg button.on{background:var(--acc);color:var(--on);box-shadow:inset 0 1px 0 rgba(255,255,255,.45)}
+.star{background:none;box-shadow:none;padding:0 8px 0 0;font-size:19px;line-height:1;color:var(--mut);vertical-align:-2px}
+.star.on{color:var(--acc);text-shadow:0 0 14px var(--acc)}
+.star:hover:not(:disabled){transform:scale(1.2)}
+.job.fav{border-top-color:color-mix(in srgb,var(--acc) 50%,transparent);border-right-color:color-mix(in srgb,var(--acc) 50%,transparent);border-bottom-color:color-mix(in srgb,var(--acc) 50%,transparent);box-shadow:var(--hi),var(--sh),0 0 26px -10px var(--acc)}
 @media(prefers-reduced-motion:reduce){*,html.tx *{animation:none!important;transition:none!important}body::before{animation:none!important}}
 </style>
 <script>(function(){var d=document.documentElement;d.dataset.pal=localStorage.getItem('pal')||'amber';d.dataset.mode=localStorage.getItem('mode')||(matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');})()</script>
@@ -189,6 +193,7 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
     <div class="bar">
       <input id="q" class="grow" placeholder="Поиск: должность, компания, стек, заметка">
       <select id="sort" style="width:auto"><option value="new">Сначала новые</option><option value="old">Сначала старые</option><option value="follow">Ближайший follow-up</option><option value="title">По названию</option><option value="company">По компании</option></select>
+      <button class="chip" id="favoff" aria-pressed="false" title="Показывать избранное как обычные вакансии">★ Скрыть избранное</button>
     </div>
     <div class="chips" id="chips" style="margin-bottom:12px"></div>
     <div class="jobs" id="jobs"></div>
@@ -264,6 +269,11 @@ function renderChips(){
     .map(([k,l])=>`<button class="chip${filter===k?' on':''}" data-f="${k}">${l} ${n(k)}</button>`).join('');
 }
 $('q').oninput=render;$('sort').onchange=render;
+if(localStorage.getItem('favoff')==='1'){$('favoff').classList.add('on');$('favoff').setAttribute('aria-pressed','true');}
+$('favoff').onclick=()=>{
+  const b=$('favoff'),on=b.classList.toggle('on');
+  b.setAttribute('aria-pressed',String(on));localStorage.setItem('favoff',on?'1':'0');render();
+};
 $('chips').onclick=e=>{const b=e.target.closest('[data-f]');if(b){filter=b.dataset.f;render();}};
 function render(){
   renderChips();
@@ -271,7 +281,9 @@ function render(){
   const hay=j=>[j.title,j.company,j.location,j.note,...arr(j.stack)].join(' ').toLowerCase();
   const cmp={new:(a,b)=>b.ts-a.ts,old:(a,b)=>a.ts-b.ts,title:(a,b)=>(a.title||'').localeCompare(b.title||''),
     company:(a,b)=>(a.company||'').localeCompare(b.company||''),follow:(a,b)=>(a.follow||'9999').localeCompare(b.follow||'9999')}[so];
-  const list=Object.entries(jobs).filter(([,j])=>(filter==='all'||j.status===filter)&&(!q||hay(j).includes(q))).sort((a,b)=>cmp(a[1],b[1]));
+  let list=Object.entries(jobs).filter(([,j])=>(filter==='all'||j.status===filter)&&(!q||hay(j).includes(q))).sort((a,b)=>cmp(a[1],b[1]));
+  const favOff=$('favoff').classList.contains('on');
+  if(!favOff)list=[...list.filter(([,j])=>j.fav),...list.filter(([,j])=>!j.fav)];
   const today=new Date().toLocaleDateString('sv');
   const fmt=d=>new Date(d+'T00:00').toLocaleDateString('ru',{day:'numeric',month:'short'});
   $('jobs').innerHTML=list.length?list.map(([k,j],i)=>{
@@ -279,14 +291,18 @@ function render(){
     const meta=[j.company,j.location,j.salary].filter(Boolean).map(esc).join(' • ');
     const dt=[j.applied?'Отправлено '+fmt(j.applied):'',j.follow?'Follow-up '+fmt(j.follow):''].filter(Boolean).join(' • ');
     const over=j.follow&&j.follow<=today&&!['offer','rejected'].includes(j.status);
-    return `<div class="job${seen.has(k)?'':' in'}" style="--c:${sc};--d:${Math.min(i,8)*40}ms" data-id="${k}"><b>${esc(j.title)}</b><span class="badge">${sl}</span>
+    return `<div class="job${seen.has(k)?'':' in'}${!favOff&&j.fav?' fav':''}" style="--c:${sc};--d:${Math.min(i,8)*40}ms" data-id="${k}"><b>${favOff?'':`<button class="star${j.fav?' on':''}" data-fav="${k}" title="Закрепить" aria-label="Закрепить">${j.fav?'★':'☆'}</button>`}${esc(j.title)}</b><span class="badge">${sl}</span>
       <span class="meta">${meta}</span><span class="meta${over?' due':''}">${dt}</span>
       ${arr(j.stack).length?`<div class="tags">${arr(j.stack).slice(0,8).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div>`;
   }).join(''):'<div class="empty">Пока пусто. Вставь текст вакансии выше.</div>';
   list.forEach(([k])=>seen.add(k));
   if(openId&&jobs[openId]&&$('ov').classList.contains('show')===false)openId=null;
 }
-$('jobs').onclick=e=>{const c=e.target.closest('[data-id]');if(c)openJob(c.dataset.id);};
+$('jobs').onclick=e=>{
+  const st=e.target.closest('[data-fav]');
+  if(st){const id=st.dataset.fav;update(ref(db,'jobs/'+id),{fav:!jobs[id].fav});return;}
+  const c=e.target.closest('[data-id]');if(c)openJob(c.dataset.id);
+};
 
 /* ── карточка вакансии ── */
 function openJob(id){
@@ -297,6 +313,7 @@ function openJob(id){
     ${j.summary?`<p>${esc(j.summary)}</p>`:''}
     ${arr(j.req).length?`<ul>${arr(j.req).map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`:''}
     <div class="row">
+      <button class="chip${j.fav?' on':''}" id="mfav">${j.fav?'★ В избранном':'☆ В избранное'}</button>
       <select id="mst" style="width:auto">${Object.entries(ST).map(([k,v])=>`<option value="${k}"${j.status===k?' selected':''}>${v[0]}</option>`).join('')}</select>
       ${j.url?`<a href="${esc(j.url)}" target="_blank" rel="noopener" style="color:var(--acc)">Открыть вакансию</a>`:''}
     </div>
@@ -325,6 +342,7 @@ function openJob(id){
   };
   $('mapp').onchange=()=>update(ref(db,'jobs/'+id),{applied:$('mapp').value});
   $('mfol').onchange=()=>update(ref(db,'jobs/'+id),{follow:$('mfol').value});
+  $('mfav').onclick=()=>{const nf=!jobs[id].fav;update(ref(db,'jobs/'+id),{fav:nf});$('mfav').classList.toggle('on',nf);$('mfav').textContent=nf?'★ В избранном':'☆ В избранное';};
   $('mnote').onchange=()=>update(ref(db,'jobs/'+id),{note:$('mnote').value});
   $('msave').onclick=()=>update(ref(db,'jobs/'+id),{letter:$('mlet').value}).then(()=>toast('Сохранено'));
   $('mcopy').onclick=()=>navigator.clipboard.writeText($('mlet').value).then(()=>toast('Скопировано'));
