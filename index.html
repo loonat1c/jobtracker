@@ -141,6 +141,11 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
 .star.on{color:var(--acc);text-shadow:0 0 14px var(--acc)}
 .star:hover:not(:disabled){transform:scale(1.2)}
 .job.fav{border-top-color:color-mix(in srgb,var(--acc) 50%,transparent);border-right-color:color-mix(in srgb,var(--acc) 50%,transparent);border-bottom-color:color-mix(in srgb,var(--acc) 50%,transparent);box-shadow:var(--hi),var(--sh),0 0 26px -10px var(--acc)}
+#favbtn{font-size:18px;line-height:1;padding:6px 14px}
+.pmsg{font-size:13.5px;color:var(--mut);margin-top:8px}
+.pmsg:empty{display:none}
+.pmsg.err{color:var(--bad)}
+#dbwarn{padding:12px 16px;border:1px solid var(--bad);border-radius:14px;background:color-mix(in srgb,var(--bad) 12%,transparent);color:var(--bad);font-size:14px}
 @media(prefers-reduced-motion:reduce){*,html.tx *{animation:none!important;transition:none!important}body::before{animation:none!important}}
 </style>
 <script>(function(){var d=document.documentElement;d.dataset.pal=localStorage.getItem('pal')||'amber';d.dataset.mode=localStorage.getItem('mode')||(matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');})()</script>
@@ -168,6 +173,7 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
 </header>
 
 <main>
+  <div id="dbwarn" hidden></div>
   <section class="box pane" id="tab-settings" hidden>
     <h2>Настройки и профиль</h2>
     <label>Worker URL</label>
@@ -187,13 +193,14 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
       <input id="jurl" class="grow" placeholder="Ссылка на вакансию (необязательно)">
       <button id="parse">Разобрать и сохранить</button>
     </div>
+    <div class="pmsg" id="pmsg" role="status"></div>
   </section>
 
   <section>
     <div class="bar">
       <input id="q" class="grow" placeholder="Поиск: должность, компания, стек, заметка">
       <select id="sort" style="width:auto"><option value="new">Сначала новые</option><option value="old">Сначала старые</option><option value="follow">Ближайший follow-up</option><option value="title">По названию</option><option value="company">По компании</option></select>
-      <button class="chip" id="favoff" aria-pressed="false" title="Показывать избранное как обычные вакансии">★ Скрыть избранное</button>
+      <button class="chip on" id="favbtn" aria-pressed="true" title="Закреплённые сверху" aria-label="Закреплённые сверху">★</button>
     </div>
     <div class="chips" id="chips" style="margin-bottom:12px"></div>
     <div class="jobs" id="jobs"></div>
@@ -217,7 +224,7 @@ import{getDatabase,ref,onValue,set,push,update,remove}from"https://www.gstatic.c
 import{getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const cfg={apiKey:"AIzaSyBuEw_53-Oqg0IGBp4oc-rNTwNVXLiGW00",authDomain:"jobfindersean.firebaseapp.com",
-  databaseURL:"https://jobfindersean-default-rtdb.europe-west1.firebasedatabase.app", // проверь в Realtime Database
+  databaseURL:"https://jobfindersean-default-rtdb.firebaseio.com", // проверь в Realtime Database
   projectId:"jobfindersean",storageBucket:"jobfindersean.firebasestorage.app",messagingSenderId:"183526713019",appId:"1:183526713019:web:323eddddb7abcbbf0f2b9e"};
 const app=initializeApp(cfg),db=getDatabase(app),auth=getAuth(app);
 
@@ -232,11 +239,20 @@ function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');cle
 /* ── DeepSeek через Worker ── */
 async function ai(messages,json){
   const url=localStorage.getItem('wUrl'),tok=localStorage.getItem('wTok');
-  if(!url||!tok)throw new Error('Укажи Worker URL и токен в настройках');
-  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-App-Token':tok},body:JSON.stringify({messages,json})});
-  const t=await r.text();
-  if(!r.ok)throw new Error(r.status+': '+t.slice(0,160));
-  return JSON.parse(t).choices[0].message.content;
+  if(!url||!tok)throw new Error('Укажи Worker URL и токен во вкладке «Настройки» и нажми «Сохранить»');
+  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),60000);
+  try{
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-App-Token':tok},body:JSON.stringify({messages,json}),signal:ctl.signal});
+    const t=await r.text();
+    if(!r.ok)throw new Error('Worker ответил '+r.status+': '+t.slice(0,200));
+    const c=JSON.parse(t).choices?.[0]?.message?.content;
+    if(!c)throw new Error('DeepSeek вернул пустой ответ, попробуй ещё раз');
+    return c;
+  }catch(e){
+    if(e.name==='AbortError')throw new Error('DeepSeek не ответил за 60 секунд');
+    if(e instanceof TypeError)throw new Error('Не удалось связаться с Worker: проверь URL в настройках и ALLOWED_ORIGIN в Worker');
+    throw e;
+  }finally{clearTimeout(tm);}
 }
 const SYS_PARSE='Extract the job posting into json with keys: title, company, location, salary, employment_type, stack (array of technologies), requirements (array of short strings, max 8), summary (1-2 sentences in Russian). Use empty string or empty array if unknown. Return only json.';
 const SYS_LETTER='You write concise, honest cover letters in English (150-220 words, 3 short paragraphs). Use only facts from the candidate profile, never invent experience. Match the candidate to the key requirements of the job. Friendly professional tone, no clichés, no placeholders except a greeting like "Dear Hiring Team,". Output only the letter text.';
@@ -250,15 +266,27 @@ $('saveSet').onclick=async()=>{
 };
 
 /* ── добавить вакансию ── */
+function pmsg(t,err){const m=$('pmsg');m.textContent=t||'';m.classList.toggle('err',!!err);}
+function extractJson(t){
+  t=t.replace(/```json|```/g,'');
+  const a=t.indexOf('{'),z=t.lastIndexOf('}');
+  if(a<0||z<a)throw new Error('DeepSeek вернул не JSON, попробуй ещё раз');
+  return JSON.parse(t.slice(a,z+1));
+}
 $('parse').onclick=async()=>{
-  const text=$('jtext').value.trim();if(!text)return;
+  const text=$('jtext').value.trim();
+  if(!text){pmsg('Вставь текст вакансии',true);return;}
   const b=$('parse');b.disabled=true;b.textContent='Разбираю…';
   try{
-    const j=JSON.parse(await ai([{role:'system',content:SYS_PARSE},{role:'user',content:text.slice(0,12000)}],true));
-    await set(push(ref(db,'jobs')),{title:j.title||'Без названия',company:j.company||'',location:j.location||'',salary:j.salary||'',
-      stack:arr(j.stack),req:arr(j.requirements),summary:j.summary||'',url:$('jurl').value.trim(),text,status:'new',letter:'',ts:Date.now()});
-    $('jtext').value='';$('jurl').value='';toast('Вакансия сохранена');
-  }catch(e){toast(e.message);}
+    pmsg('Отправляю в DeepSeek…');
+    const j=extractJson(await ai([{role:'system',content:SYS_PARSE},{role:'user',content:text.slice(0,12000)}],true));
+    pmsg('Сохраняю в базу…');
+    const wait=new Promise((_,rej)=>setTimeout(()=>rej(new Error('База данных не отвечает. Проверь databaseURL в index.html: он должен совпадать с адресом на странице Realtime Database')),12000));
+    await Promise.race([set(push(ref(db,'jobs')),{title:j.title||'Без названия',company:j.company||'',location:j.location||'',salary:j.salary||'',
+      stack:arr(j.stack),req:arr(j.requirements),summary:j.summary||'',url:$('jurl').value.trim(),text,status:'new',letter:'',ts:Date.now()}),wait]);
+    $('jtext').value='';$('jurl').value='';
+    pmsg('Вакансия сохранена');setTimeout(()=>pmsg(''),3000);
+  }catch(e){console.error(e);pmsg(e.message,true);}
   b.disabled=false;b.textContent='Разобрать и сохранить';
 };
 
@@ -269,10 +297,10 @@ function renderChips(){
     .map(([k,l])=>`<button class="chip${filter===k?' on':''}" data-f="${k}">${l} ${n(k)}</button>`).join('');
 }
 $('q').oninput=render;$('sort').onchange=render;
-if(localStorage.getItem('favoff')==='1'){$('favoff').classList.add('on');$('favoff').setAttribute('aria-pressed','true');}
-$('favoff').onclick=()=>{
-  const b=$('favoff'),on=b.classList.toggle('on');
-  b.setAttribute('aria-pressed',String(on));localStorage.setItem('favoff',on?'1':'0');render();
+if(localStorage.getItem('favon')==='0'){$('favbtn').classList.remove('on');$('favbtn').setAttribute('aria-pressed','false');$('favbtn').textContent='☆';}
+$('favbtn').onclick=()=>{
+  const b=$('favbtn'),on=b.classList.toggle('on');
+  b.setAttribute('aria-pressed',String(on));b.textContent=on?'★':'☆';localStorage.setItem('favon',on?'1':'0');render();
 };
 $('chips').onclick=e=>{const b=e.target.closest('[data-f]');if(b){filter=b.dataset.f;render();}};
 function render(){
@@ -282,7 +310,7 @@ function render(){
   const cmp={new:(a,b)=>b.ts-a.ts,old:(a,b)=>a.ts-b.ts,title:(a,b)=>(a.title||'').localeCompare(b.title||''),
     company:(a,b)=>(a.company||'').localeCompare(b.company||''),follow:(a,b)=>(a.follow||'9999').localeCompare(b.follow||'9999')}[so];
   let list=Object.entries(jobs).filter(([,j])=>(filter==='all'||j.status===filter)&&(!q||hay(j).includes(q))).sort((a,b)=>cmp(a[1],b[1]));
-  const favOff=$('favoff').classList.contains('on');
+  const favOff=!$('favbtn').classList.contains('on');
   if(!favOff)list=[...list.filter(([,j])=>j.fav),...list.filter(([,j])=>!j.fav)];
   const today=new Date().toLocaleDateString('sv');
   const fmt=d=>new Date(d+'T00:00').toLocaleDateString('ru',{day:'numeric',month:'short'});
@@ -372,7 +400,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('ov').classList.c
 function start(){
   $('wUrl').value=localStorage.getItem('wUrl')||'';
   $('wTok').value=localStorage.getItem('wTok')||'';
-  onValue(ref(db,'jobs'),s=>{jobs=s.val()||{};render();});
+  let dbOk=false;
+  onValue(ref(db,'.info/connected'),s=>{if(s.val()===true){dbOk=true;$('dbwarn').hidden=true;}});
+  setTimeout(()=>{if(!dbOk){$('dbwarn').hidden=false;$('dbwarn').textContent='Нет соединения с базой данных. Проверь databaseURL в index.html: он должен совпадать с адресом на странице Realtime Database в Firebase.';}},8000);
+  onValue(ref(db,'jobs'),s=>{jobs=s.val()||{};render();},e=>{$('dbwarn').hidden=false;$('dbwarn').textContent='База данных: '+e.message;});
   onValue(ref(db,'profile'),s=>{const p=s.val();if(p&&document.activeElement!==$('profile'))$('profile').value=p.text||'';});
 }
 $('tabs').onclick=e=>{
