@@ -20,7 +20,7 @@ body{font:15px/1.5 Onest,system-ui,sans-serif;background:var(--bg);color:var(--t
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 h1{font:600 17px Unbounded,sans-serif;letter-spacing:-.02em}
 header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
-main{max-width:980px;margin:0 auto;padding:20px;display:grid;gap:20px}
+main{max-width:860px;margin:0 auto;padding:20px;display:grid;gap:20px}
 input,textarea,select{width:100%;font:inherit;color:var(--text);background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 textarea{resize:vertical;min-height:110px}
 input,textarea,select{transition:border-color .2s,box-shadow .2s}
@@ -45,7 +45,7 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 .chip{padding:6px 14px;font-weight:500;background:transparent;color:var(--mut);border:1px solid var(--line)}
 .chip.on{background:var(--acc);color:var(--on);border-color:var(--acc)}
 .jobs{display:grid;gap:10px}
-.job{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:14px 16px;background:var(--s1);border:1px solid var(--line);border-left:4px solid var(--c,var(--mut));border-radius:var(--r);cursor:pointer}
+.job{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:11px 14px;align-items:center;background:var(--s1);border:1px solid var(--line);border-left:4px solid var(--c,var(--mut));border-radius:var(--r);cursor:pointer}
 .job{transition:transform .25s cubic-bezier(.2,.8,.2,1),border-color .2s,background .2s}
 .job:hover{border-color:var(--acc);border-left-color:var(--c,var(--mut));transform:translateY(-2px)}
 .job.in{animation:jin .45s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:var(--d,0ms)}
@@ -142,23 +142,42 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
 .star:hover:not(:disabled){transform:scale(1.2)}
 .job.fav{border-top-color:color-mix(in srgb,var(--acc) 50%,transparent);border-right-color:color-mix(in srgb,var(--acc) 50%,transparent);border-bottom-color:color-mix(in srgb,var(--acc) 50%,transparent);box-shadow:var(--hi),var(--sh),0 0 26px -10px var(--acc)}
 #favbtn{font-size:18px;line-height:1;padding:6px 14px}
+.addbody{padding-top:12px}
+.stage{display:grid;grid-template-rows:1fr 0fr;transition:grid-template-rows .65s cubic-bezier(.2,.8,.2,1)}
+.stage.shut{grid-template-rows:0fr 1fr}
+.stagein,.fabrow{min-height:0;overflow:hidden}
+.stage.settled .stagein{overflow:visible}
+.fabrow{display:flex;justify-content:center}
+.stage.noanim,.stage.noanim *{transition:none!important}
+#addbox{transition:opacity .4s,transform .55s cubic-bezier(.2,.8,.2,1),filter .5s}
+.stage.shut #addbox{opacity:0;transform:translateY(-14px) scale(.96);filter:blur(8px)}
+.mini{width:34px;height:34px;padding:0;display:grid;place-items:center;border-radius:50%}
+.fab{position:relative;width:54px;height:54px;margin:4px 0;padding:0;border:0;border-radius:50%;display:grid;place-items:center;
+  opacity:0;transform:scale(.3) rotate(-90deg);pointer-events:none;transition:opacity .3s,transform .6s cubic-bezier(.34,1.56,.64,1)}
+.stage.shut .fab{opacity:1;transform:none;pointer-events:auto;transition-delay:.18s}
+.fab::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--acc);opacity:0;animation:ping 3s ease-out 1.2s infinite}
+@keyframes ping{0%{transform:scale(1);opacity:.5}80%,100%{transform:scale(1.7);opacity:0}}
+.stage.shut .fab:hover:not(:disabled){transform:scale(1.1) rotate(90deg);transition-delay:0s}
+.stage.shut .fab:active:not(:disabled){transform:scale(.94)}
 .fold{display:grid;grid-template-rows:1fr;transition:grid-template-rows .4s cubic-bezier(.2,.8,.2,1),opacity .3s}
 .fold>div{overflow:hidden;min-height:0;padding:12px 4px 4px;margin:0 -4px}
 .fold.shut{grid-template-rows:0fr;opacity:0}
 #addbox h2{margin:0}
-.jl{display:flex;flex-direction:column;gap:6px;min-width:0}
-.jr{display:flex;flex-direction:column;align-items:flex-end;gap:7px;text-align:right}
-.loc{display:inline-flex;align-items:center;gap:6px;width:fit-content;font-weight:600;font-size:13.5px;padding:3px 12px 3px 9px;border-radius:999px;background:color-mix(in srgb,var(--blue) 17%,transparent);color:var(--blue);border:1px solid color-mix(in srgb,var(--blue) 38%,transparent)}
+.jl{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sub{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.jr{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.jr .badge{align-self:center}
+.loc{display:inline-flex;align-items:center;gap:6px;width:fit-content;font-weight:600;font-size:13px;padding:2px 10px 2px 8px;border-radius:999px;background:color-mix(in srgb,var(--blue) 17%,transparent);color:var(--blue);border:1px solid color-mix(in srgb,var(--blue) 38%,transparent)}
 .loc svg{flex:none}
 .sal{font-weight:700;font-size:15px;white-space:nowrap}
 .age{font-size:12.5px;color:var(--mut);white-space:nowrap}
-.go{font-size:13px;font-weight:600;color:var(--acc);text-decoration:none;padding:4px 12px;border:1px solid var(--line);border-radius:999px;transition:background .2s,color .2s,border-color .2s}
+.go{display:grid;place-items:center;width:30px;height:30px;color:var(--acc);text-decoration:none;border:1px solid var(--line);border-radius:50%;transition:background .2s,color .2s,border-color .2s}
 .go:hover{background:var(--acc);color:var(--on);border-color:var(--acc)}
 .pmsg{font-size:13.5px;color:var(--mut);margin-top:8px}
 .pmsg:empty{display:none}
 .pmsg.err{color:var(--bad)}
 #dbwarn{padding:12px 16px;border:1px solid var(--bad);border-radius:14px;background:color-mix(in srgb,var(--bad) 12%,transparent);color:var(--bad);font-size:14px}
-@media(prefers-reduced-motion:reduce){*,html.tx *{animation:none!important;transition:none!important}body::before{animation:none!important}}
+@media(prefers-reduced-motion:reduce){*,html.tx *{animation:none!important;transition:none!important}body::before,.fab::after{animation:none!important}}
 </style>
 <script>(function(){var d=document.documentElement;d.dataset.pal=localStorage.getItem('pal')||'amber';d.dataset.mode=localStorage.getItem('mode')||(matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');})()</script>
 </head>
@@ -198,17 +217,19 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
   </section>
 
   <div class="pane" id="tab-jobs">
+  <div class="stage settled" id="stage"><div class="stagein">
   <section class="box" id="addbox">
-    <div class="row"><h2>Новая вакансия</h2><span class="grow"></span><button class="chip" id="addtog" aria-expanded="true" aria-controls="addfold">Свернуть</button></div>
-    <div class="fold" id="addfold"><div>
+    <div class="row"><h2>Новая вакансия</h2><span class="grow"></span><button class="ghost mini" id="addtog" aria-label="Свернуть форму" title="Свернуть"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button></div>
+    <div class="addbody">
     <textarea id="jtext" placeholder="Вставь полный текст вакансии"></textarea>
     <div class="row" style="margin-top:10px">
       <input id="jurl" class="grow" placeholder="Ссылка на вакансию (необязательно)">
       <button id="parse">Разобрать и сохранить</button>
     </div>
     <div class="pmsg" id="pmsg" role="status"></div>
-    </div></div>
-  </section>
+    </div>
+  </section></div>
+  <div class="fabrow"><button class="fab" id="addfab" aria-label="Добавить вакансию" title="Добавить вакансию"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
 
   <section>
     <div class="bar">
@@ -238,7 +259,7 @@ import{getDatabase,ref,onValue,set,push,update,remove}from"https://www.gstatic.c
 import{getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const cfg={apiKey:"AIzaSyBuEw_53-Oqg0IGBp4oc-rNTwNVXLiGW00",authDomain:"jobfindersean.firebaseapp.com",
-  databaseURL:"https://jobfindersean-default-rtdb.firebaseio.com", // проверь в Realtime Database
+  databaseURL:"https://jobfindersean-default-rtdb.firebaseio.com",
   projectId:"jobfindersean",storageBucket:"jobfindersean.firebasestorage.app",messagingSenderId:"183526713019",appId:"1:183526713019:web:323eddddb7abcbbf0f2b9e"};
 const app=initializeApp(cfg),db=getDatabase(app),auth=getAuth(app);
 
@@ -252,6 +273,18 @@ function ago(ts){
   const a=new Date(ts),n=new Date();
   const d=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(a.getFullYear(),a.getMonth(),a.getDate()))/864e5);
   return d<=0?'сегодня':d===1?'вчера':d+' дн. назад';
+}
+const GO='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>';
+function fmtSal(s){
+  s=(s||'').trim();if(!s)return'';
+  const nums=[...s.matchAll(/(\d[\d.,]*)\s?(?:([kKкК])(?![A-Za-zА-Яа-я]))?/g)].slice(0,2).map(m=>{
+    let n=parseFloat(m[1].replace(/,/g,''));if(!isFinite(n))return null;
+    if(m[2])n*=1000;return n;}).filter(n=>n!==null);
+  if(!nums.length)return s.length>18?s.slice(0,17)+'…':s;
+  const cur=/€|eur|евро/i.test(s)?'€':/£|gbp/i.test(s)?'£':/₽|rub|руб/i.test(s)?'₽':/\$|usd|доллар/i.test(s)?'$':'';
+  const unit=/hour|hr\b|час/i.test(s)?'/hr':/month|\bmo\b|мес/i.test(s)?'/mo':'';
+  const f=n=>n>=1000?(Math.round(n/100)/10)+'k':String(n);
+  return cur+nums.map(f).join('-')+unit;
 }
 const addedStr=ts=>ts?new Date(ts).toLocaleString('ru',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const ST={new:['Новая','var(--blue)'],applied:['Отправлено','var(--acc)'],interview:['Собеседование','var(--ok)'],offer:['Оффер','var(--vio)'],rejected:['Отказ','var(--bad)']};
@@ -344,14 +377,11 @@ function render(){
     const dt=[j.applied?'Отправлено '+fmt(j.applied):'',j.follow?'Follow-up '+fmt(j.follow):''].filter(Boolean).join(' • ');
     const over=j.follow&&j.follow<=today&&!['offer','rejected'].includes(j.status);
     return `<div class="job${seen.has(k)?'':' in'}${!favOff&&j.fav?' fav':''}" style="--c:${sc};--d:${Math.min(i,8)*40}ms" data-id="${k}"><div class="jl"><b>${favOff?'':`<button class="star${j.fav?' on':''}" data-fav="${k}" title="Закрепить" aria-label="Закрепить">${j.fav?'★':'☆'}</button>`}${esc(j.title)}</b>
-      ${meta?`<span class="meta">${meta}</span>`:''}
-      ${j.location?`<span class="loc">${PIN}${esc(j.location)}</span>`:''}
+      <div class="sub">${meta?`<span class="meta">${meta}</span>`:''}${j.location?`<span class="loc">${PIN}${esc(j.location)}</span>`:''}<span class="age" title="Добавлена ${addedStr(j.ts)}">${ago(j.ts)}</span></div>
       ${dt?`<span class="meta${over?' due':''}">${dt}</span>`:''}</div>
-      <div class="jr"><span class="badge">${sl}</span>
-      ${j.salary?`<span class="sal">${esc(j.salary)}</span>`:''}
-      <span class="age" title="Добавлена ${addedStr(j.ts)}">${ago(j.ts)}</span>
-      ${href?`<a class="go" href="${esc(href)}" target="_blank" rel="noopener" title="Открыть вакансию">Открыть ↗</a>`:''}</div>
-      ${arr(j.stack).length?`<div class="tags">${arr(j.stack).slice(0,8).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div>`;
+      <div class="jr">${j.salary?`<span class="sal" title="${esc(j.salary)}">${esc(fmtSal(j.salary))}</span>`:''}<span class="badge">${sl}</span>
+      ${href?`<a class="go" href="${esc(href)}" target="_blank" rel="noopener" title="Открыть вакансию" aria-label="Открыть вакансию">${GO}</a>`:''}</div>
+      ${arr(j.stack).length?`<div class="tags">${arr(j.stack).slice(0,6).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div>`;
   }).join(''):'<div class="empty">Пока пусто. Вставь текст вакансии выше.</div>';
   list.forEach(([k])=>seen.add(k));
   if(openId&&jobs[openId]&&$('ov').classList.contains('show')===false)openId=null;
@@ -438,12 +468,18 @@ function start(){
   onValue(ref(db,'jobs'),s=>{jobs=s.val()||{};render();},e=>{$('dbwarn').hidden=false;$('dbwarn').textContent='База данных: '+e.message;});
   onValue(ref(db,'profile'),s=>{const p=s.val();if(p&&document.activeElement!==$('profile'))$('profile').value=p.text||'';});
 }
-function setAdd(shut){
-  $('addfold').classList.toggle('shut',shut);$('addfold').inert=shut;
-  const b=$('addtog');b.textContent=shut?'Развернуть':'Свернуть';b.setAttribute('aria-expanded',String(!shut));
+let settleT;
+function setAdd(shut,anim){
+  const st=$('stage');clearTimeout(settleT);
+  if(!anim)st.classList.add('noanim');
+  st.classList.toggle('shut',shut);st.classList.remove('settled');
+  $('addbox').inert=shut;$('addfab').inert=!shut;
+  if(!shut){if(anim)settleT=setTimeout(()=>st.classList.add('settled'),700);else st.classList.add('settled');}
+  if(!anim)requestAnimationFrame(()=>requestAnimationFrame(()=>st.classList.remove('noanim')));
 }
-setAdd(localStorage.getItem('addshut')==='1');
-$('addtog').onclick=()=>{const shut=!$('addfold').classList.contains('shut');setAdd(shut);localStorage.setItem('addshut',shut?'1':'0');};
+setAdd(localStorage.getItem('addshut')==='1',false);
+$('addtog').onclick=()=>{setAdd(true,true);localStorage.setItem('addshut','1');setTimeout(()=>$('addfab').focus({preventScroll:true}),60);};
+$('addfab').onclick=()=>{setAdd(false,true);localStorage.setItem('addshut','0');setTimeout(()=>$('jtext').focus({preventScroll:true}),380);};
 $('tabs').onclick=e=>{
   const b=e.target.closest('[data-t]');if(!b)return;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===b));
