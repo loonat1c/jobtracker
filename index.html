@@ -143,11 +143,14 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
 .job.fav{border-top-color:color-mix(in srgb,var(--acc) 50%,transparent);border-right-color:color-mix(in srgb,var(--acc) 50%,transparent);border-bottom-color:color-mix(in srgb,var(--acc) 50%,transparent);box-shadow:var(--hi),var(--sh),0 0 26px -10px var(--acc)}
 #favbtn{font-size:18px;line-height:1;padding:6px 14px}
 .addbody{padding-top:12px}
-.stage{display:grid;grid-template-rows:1fr 0fr;transition:grid-template-rows .65s cubic-bezier(.2,.8,.2,1)}
-.stage.shut{grid-template-rows:0fr 1fr}
-.stagein,.fabrow{min-height:0;overflow:hidden}
-.stage.settled .stagein{overflow:visible}
-.fabrow{display:flex;justify-content:center}
+.stagein,.fabrow{display:grid;transition:grid-template-rows .7s cubic-bezier(.45,0,.2,1)}
+.stagein{grid-template-rows:1fr}
+.fabrow{grid-template-rows:0fr}
+.stage.shut .stagein{grid-template-rows:0fr}
+.stage.shut .fabrow{grid-template-rows:1fr}
+.sclip,.fclip{min-height:0;overflow:hidden}
+.stage.settled .sclip{overflow:visible}
+.fclip{display:flex;justify-content:center}
 .stage.noanim,.stage.noanim *{transition:none!important}
 #addbox{transition:opacity .4s,transform .55s cubic-bezier(.2,.8,.2,1),filter .5s}
 .stage.shut #addbox{opacity:0;transform:translateY(-14px) scale(.96);filter:blur(8px)}
@@ -165,13 +168,14 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
 #addbox h2{margin:0}
 .jl{display:flex;flex-direction:column;gap:3px;min-width:0}
 .sub{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
-.jr{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
-.jr .badge{align-self:center}
+.jr{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.jr .badge{align-self:flex-end}
+.jr3{display:flex;align-items:center;gap:8px}
 .loc{display:inline-flex;align-items:center;gap:6px;width:fit-content;font-weight:600;font-size:13px;padding:2px 10px 2px 8px;border-radius:999px;background:color-mix(in srgb,var(--blue) 17%,transparent);color:var(--blue);border:1px solid color-mix(in srgb,var(--blue) 38%,transparent)}
 .loc svg{flex:none}
 .sal{font-weight:700;font-size:15px;white-space:nowrap}
 .age{font-size:12.5px;color:var(--mut);white-space:nowrap}
-.go{display:grid;place-items:center;width:30px;height:30px;color:var(--acc);text-decoration:none;border:1px solid var(--line);border-radius:50%;transition:background .2s,color .2s,border-color .2s}
+.go{display:grid;place-items:center;width:28px;height:28px;color:var(--acc);text-decoration:none;border:1px solid var(--line);border-radius:50%;transition:background .2s,color .2s,border-color .2s}
 .go:hover{background:var(--acc);color:var(--on);border-color:var(--acc)}
 .pmsg{font-size:13.5px;color:var(--mut);margin-top:8px}
 .pmsg:empty{display:none}
@@ -217,7 +221,7 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
   </section>
 
   <div class="pane" id="tab-jobs">
-  <div class="stage settled" id="stage"><div class="stagein">
+  <div class="stage settled" id="stage"><div class="stagein"><div class="sclip">
   <section class="box" id="addbox">
     <div class="row"><h2>Новая вакансия</h2><span class="grow"></span><button class="ghost mini" id="addtog" aria-label="Свернуть форму" title="Свернуть"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button></div>
     <div class="addbody">
@@ -228,8 +232,8 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
     </div>
     <div class="pmsg" id="pmsg" role="status"></div>
     </div>
-  </section></div>
-  <div class="fabrow"><button class="fab" id="addfab" aria-label="Добавить вакансию" title="Добавить вакансию"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
+  </section></div></div>
+  <div class="fabrow"><div class="fclip"><button class="fab" id="addfab" aria-label="Добавить вакансию" title="Добавить вакансию"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div></div></div>
 
   <section>
     <div class="bar">
@@ -377,10 +381,11 @@ function render(){
     const dt=[j.applied?'Отправлено '+fmt(j.applied):'',j.follow?'Follow-up '+fmt(j.follow):''].filter(Boolean).join(' • ');
     const over=j.follow&&j.follow<=today&&!['offer','rejected'].includes(j.status);
     return `<div class="job${seen.has(k)?'':' in'}${!favOff&&j.fav?' fav':''}" style="--c:${sc};--d:${Math.min(i,8)*40}ms" data-id="${k}"><div class="jl"><b>${favOff?'':`<button class="star${j.fav?' on':''}" data-fav="${k}" title="Закрепить" aria-label="Закрепить">${j.fav?'★':'☆'}</button>`}${esc(j.title)}</b>
-      <div class="sub">${meta?`<span class="meta">${meta}</span>`:''}${j.location?`<span class="loc">${PIN}${esc(j.location)}</span>`:''}<span class="age" title="Добавлена ${addedStr(j.ts)}">${ago(j.ts)}</span></div>
+      <div class="sub">${meta?`<span class="meta">${meta}</span>`:''}${j.location?`<span class="loc">${PIN}${esc(j.location)}</span>`:''}</div>
       ${dt?`<span class="meta${over?' due':''}">${dt}</span>`:''}</div>
-      <div class="jr">${j.salary?`<span class="sal" title="${esc(j.salary)}">${esc(fmtSal(j.salary))}</span>`:''}<span class="badge">${sl}</span>
-      ${href?`<a class="go" href="${esc(href)}" target="_blank" rel="noopener" title="Открыть вакансию" aria-label="Открыть вакансию">${GO}</a>`:''}</div>
+      <div class="jr"><span class="badge">${sl}</span>
+      ${j.salary?`<span class="sal" title="${esc(j.salary)}">${esc(fmtSal(j.salary))}</span>`:''}
+      <div class="jr3"><span class="age" title="Добавлена ${addedStr(j.ts)}">${ago(j.ts)}</span>${href?`<a class="go" href="${esc(href)}" target="_blank" rel="noopener" title="Открыть вакансию" aria-label="Открыть вакансию">${GO}</a>`:''}</div></div>
       ${arr(j.stack).length?`<div class="tags">${arr(j.stack).slice(0,6).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div>`;
   }).join(''):'<div class="empty">Пока пусто. Вставь текст вакансии выше.</div>';
   list.forEach(([k])=>seen.add(k));
