@@ -142,6 +142,13 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
 .star:hover:not(:disabled){transform:scale(1.2)}
 .job.fav{border-top-color:color-mix(in srgb,var(--acc) 50%,transparent);border-right-color:color-mix(in srgb,var(--acc) 50%,transparent);border-bottom-color:color-mix(in srgb,var(--acc) 50%,transparent);box-shadow:var(--hi),var(--sh),0 0 26px -10px var(--acc)}
 #favbtn{font-size:18px;line-height:1;padding:6px 14px}
+.tag.mode{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
+.tag.mode::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+.modebox{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-radius:14px;border:1px solid color-mix(in srgb,var(--c) 40%,transparent);background:color-mix(in srgb,var(--c) 11%,transparent)}
+.modebox .mlab{font-size:12.5px;color:var(--mut)}
+.modebox .mval{font-size:16px;color:var(--c)}
+.modebox .mnote{font-size:13.5px;color:var(--mut)}
+.modebox select{width:auto;padding:6px 10px;font-size:13.5px}
 .addbody{padding-top:12px}
 .stagein,.fabrow{display:grid;transition:grid-template-rows .7s cubic-bezier(.45,0,.2,1)}
 .stagein{grid-template-rows:1fr}
@@ -292,6 +299,15 @@ function fmtSal(s){
 }
 const addedStr=ts=>ts?new Date(ts).toLocaleString('ru',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const ST={new:['Новая','var(--blue)'],applied:['Отправлено','var(--acc)'],interview:['Собеседование','var(--ok)'],offer:['Оффер','var(--vio)'],rejected:['Отказ','var(--bad)']};
+const MODES={remote:['Remote','var(--ok)'],hybrid:['Hybrid','var(--vio)'],onsite:['On-site','var(--acc)'],other:['Other','var(--blue)']};
+function normMode(m){
+  m=String(m||'').toLowerCase();
+  if(/hybrid|гибрид/.test(m))return'hybrid';
+  if(/remote|удал[её]н/.test(m))return'remote';
+  if(/on.?site|office|офис/.test(m))return'onsite';
+  if(!m||/unknown|unspecified|не указ|n\/a|none/.test(m))return'';
+  return'other';
+}
 let jobs={},filter='all',openId=null,started=false;const seen=new Set();
 
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),3200);}
@@ -314,7 +330,7 @@ async function ai(messages,json){
     throw e;
   }finally{clearTimeout(tm);}
 }
-const SYS_PARSE='Extract the job posting into json with keys: title, company, location, salary, employment_type, stack (array of technologies), requirements (array of short strings, max 8), summary (1-2 sentences in Russian). Use empty string or empty array if unknown. Return only json.';
+const SYS_PARSE='Extract the job posting into json with keys: title, company, location, salary, employment_type, work_mode (one of: remote, hybrid, onsite, other, unspecified; use unspecified when the posting does not say, never guess), work_note (short detail such as "3 days in office" or "US only", empty if none), stack (array of technologies), requirements (array of short strings, max 8), summary (1-2 sentences in Russian). Use empty string or empty array if unknown. Return only json.';
 const SYS_LETTER='You write concise, honest cover letters in English (150-220 words, 3 short paragraphs). Use only facts from the candidate profile, never invent experience. Match the candidate to the key requirements of the job. Friendly professional tone, no clichés, no placeholders except a greeting like "Dear Hiring Team,". Output only the letter text.';
 
 /* ── настройки ── */
@@ -343,7 +359,7 @@ $('parse').onclick=async()=>{
     pmsg('Сохраняю в базу…');
     const wait=new Promise((_,rej)=>setTimeout(()=>rej(new Error('База данных не отвечает. Проверь databaseURL в index.html: он должен совпадать с адресом на странице Realtime Database')),12000));
     await Promise.race([set(push(ref(db,'jobs')),{title:j.title||'Без названия',company:j.company||'',location:j.location||'',salary:j.salary||'',
-      stack:arr(j.stack),req:arr(j.requirements),summary:j.summary||'',url:$('jurl').value.trim(),text,status:'new',letter:'',ts:Date.now()}),wait]);
+      mode:normMode(j.work_mode),modeNote:String(j.work_note||''),stack:arr(j.stack),req:arr(j.requirements),summary:j.summary||'',url:$('jurl').value.trim(),text,status:'new',letter:'',ts:Date.now()}),wait]);
     $('jtext').value='';$('jurl').value='';
     pmsg('Вакансия сохранена');setTimeout(()=>pmsg(''),3000);
   }catch(e){console.error(e);pmsg(e.message,true);}
@@ -366,7 +382,7 @@ $('chips').onclick=e=>{const b=e.target.closest('[data-f]');if(b){filter=b.datas
 function render(){
   renderChips();
   const q=$('q').value.trim().toLowerCase(),so=$('sort').value;
-  const hay=j=>[j.title,j.company,j.location,j.note,...arr(j.stack)].join(' ').toLowerCase();
+  const hay=j=>[j.title,j.company,j.location,j.note,(MODES[j.mode]||[])[0],...arr(j.stack)].join(' ').toLowerCase();
   const cmp={new:(a,b)=>b.ts-a.ts,old:(a,b)=>a.ts-b.ts,title:(a,b)=>(a.title||'').localeCompare(b.title||''),
     company:(a,b)=>(a.company||'').localeCompare(b.company||''),follow:(a,b)=>(a.follow||'9999').localeCompare(b.follow||'9999')}[so];
   let list=Object.entries(jobs).filter(([,j])=>(filter==='all'||j.status===filter)&&(!q||hay(j).includes(q))).sort((a,b)=>cmp(a[1],b[1]));
@@ -378,6 +394,7 @@ function render(){
     const [sl,sc]=ST[j.status]||ST.new;
     const meta=esc(j.company||'');
     const href=safeUrl(j.url);
+    const md=MODES[j.mode];
     const dt=[j.applied?'Отправлено '+fmt(j.applied):'',j.follow?'Follow-up '+fmt(j.follow):''].filter(Boolean).join(' • ');
     const over=j.follow&&j.follow<=today&&!['offer','rejected'].includes(j.status);
     return `<div class="job${seen.has(k)?'':' in'}${!favOff&&j.fav?' fav':''}" style="--c:${sc};--d:${Math.min(i,8)*40}ms" data-id="${k}"><div class="jl"><b>${favOff?'':`<button class="star${j.fav?' on':''}" data-fav="${k}" title="Закрепить" aria-label="Закрепить">${j.fav?'★':'☆'}</button>`}${esc(j.title)}</b>
@@ -386,7 +403,7 @@ function render(){
       <div class="jr"><span class="badge">${sl}</span>
       ${j.salary?`<span class="sal" title="${esc(j.salary)}">${esc(fmtSal(j.salary))}</span>`:''}
       <div class="jr3"><span class="age" title="Добавлена ${addedStr(j.ts)}">${ago(j.ts)}</span>${href?`<a class="go" href="${esc(href)}" target="_blank" rel="noopener" title="Открыть вакансию" aria-label="Открыть вакансию">${GO}</a>`:''}</div></div>
-      ${arr(j.stack).length?`<div class="tags">${arr(j.stack).slice(0,6).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div>`;
+      ${md||arr(j.stack).length?`<div class="tags">${md?`<span class="tag mode" style="--c:${md[1]}">${md[0]}</span>`:''}${arr(j.stack).slice(0,6).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div>`;
   }).join(''):'<div class="empty">Пока пусто. Вставь текст вакансии выше.</div>';
   list.forEach(([k])=>seen.add(k));
   if(openId&&jobs[openId]&&$('ov').classList.contains('show')===false)openId=null;
@@ -405,6 +422,13 @@ function openJob(id){
     <h2>${esc(j.title)}</h2>
     <div class="meta" style="color:var(--mut)">${[j.company,j.location,j.salary].filter(Boolean).map(esc).join(' • ')}</div>
     <div style="color:var(--mut);font-size:13.5px">Добавлена в трекер: ${addedStr(j.ts)} · ${ago(j.ts)}</div>
+    <div class="modebox" id="mbox" style="--c:${(MODES[j.mode]||[])[1]||'var(--mut)'}">
+      <span class="mlab">Формат работы</span>
+      <b class="mval" id="mval">${MODES[j.mode]?MODES[j.mode][0]:'Не указан'}</b>
+      ${j.modeNote?`<span class="mnote">${esc(j.modeNote)}</span>`:''}
+      <span style="flex:1"></span>
+      <select id="mmode" aria-label="Формат работы">${[['','Не указан'],...Object.entries(MODES).map(([k,v])=>[k,v[0]])].map(([k,l])=>`<option value="${k}"${(j.mode||'')===k?' selected':''}>${l}</option>`).join('')}</select>
+    </div>
     ${j.summary?`<p>${esc(j.summary)}</p>`:''}
     ${arr(j.req).length?`<ul>${arr(j.req).map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`:''}
     <div class="row">
@@ -439,6 +463,10 @@ function openJob(id){
   $('mfol').onchange=()=>update(ref(db,'jobs/'+id),{follow:$('mfol').value});
   $('mfav').onclick=()=>{const nf=!jobs[id].fav;update(ref(db,'jobs/'+id),{fav:nf});$('mfav').classList.toggle('on',nf);$('mfav').textContent=nf?'★ В избранном':'☆ В избранное';};
   $('mnote').onchange=()=>update(ref(db,'jobs/'+id),{note:$('mnote').value});
+  $('mmode').onchange=()=>{
+    const v=$('mmode').value;update(ref(db,'jobs/'+id),{mode:v});
+    $('mbox').style.setProperty('--c',(MODES[v]||[])[1]||'var(--mut)');$('mval').textContent=MODES[v]?MODES[v][0]:'Не указан';
+  };
   $('msave').onclick=()=>update(ref(db,'jobs/'+id),{letter:$('mlet').value}).then(()=>toast('Сохранено'));
   $('mcopy').onclick=()=>navigator.clipboard.writeText($('mlet').value).then(()=>toast('Скопировано'));
   $('mclose').onclick=closeJob;
