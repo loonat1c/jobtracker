@@ -142,6 +142,9 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
 .star:hover:not(:disabled){transform:scale(1.2)}
 .job.fav{border-top-color:color-mix(in srgb,var(--acc) 50%,transparent);border-right-color:color-mix(in srgb,var(--acc) 50%,transparent);border-bottom-color:color-mix(in srgb,var(--acc) 50%,transparent);box-shadow:var(--hi),var(--sh),0 0 26px -10px var(--acc)}
 #favbtn{font-size:18px;line-height:1;padding:6px 14px}
+.bm{display:inline-block;padding:10px 20px;border-radius:999px;font-weight:600;text-decoration:none;color:var(--on);cursor:grab;background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 78%,#fff),var(--acc));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 10px 24px -12px var(--acc)}
+.bm:active{cursor:grabbing}
+.hint{font-size:13.5px;color:var(--mut)}
 .tag.mode{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
 .tag.mode::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
 .modebox{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-radius:14px;border:1px solid color-mix(in srgb,var(--c) 40%,transparent);background:color-mix(in srgb,var(--c) 11%,transparent)}
@@ -225,6 +228,10 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
     <label>Мой профиль для писем: опыт, стек, достижения, чем горжусь (на английском)</label>
     <textarea id="profile" rows="8" placeholder="Mobile developer with N years of experience in…"></textarea>
     <div class="row" style="margin-top:12px"><button id="saveSet">Сохранить</button></div>
+    <h2 style="margin-top:26px">Быстрое добавление с сайтов вакансий</h2>
+    <p class="hint" style="margin-bottom:12px">Перетащи кнопку на панель закладок браузера. На странице вакансии (LinkedIn, Indeed, Glassdoor и др.) нажми эту закладку: текст вакансии сам откроется здесь и разберётся. Если нужен только кусок текста, сначала выдели его на странице, тогда возьмётся именно он.</p>
+    <div class="row"><a class="bm" id="bm" href="#" draggable="true">＋ В трекер</a><button class="ghost" id="bmcopy">Копировать код закладки</button></div>
+    <p class="hint" style="margin-top:12px">Не перетаскивается (телефон, другой браузер)? Создай закладку вручную и вставь скопированный код вместо адреса.</p>
   </section>
 
   <div class="pane" id="tab-jobs">
@@ -500,6 +507,7 @@ function start(){
   setTimeout(()=>{if(!dbOk){$('dbwarn').hidden=false;$('dbwarn').textContent='Нет соединения с базой данных. Проверь databaseURL в index.html: он должен совпадать с адресом на странице Realtime Database в Firebase.';}},8000);
   onValue(ref(db,'jobs'),s=>{jobs=s.val()||{};render();},e=>{$('dbwarn').hidden=false;$('dbwarn').textContent='База данных: '+e.message;});
   onValue(ref(db,'profile'),s=>{const p=s.val();if(p&&document.activeElement!==$('profile'))$('profile').value=p.text||'';});
+  takePending();
 }
 let settleT;
 function setAdd(shut,anim){
@@ -519,6 +527,32 @@ $('tabs').onclick=e=>{
   $('tab-jobs').hidden=b.dataset.t!=='jobs';
   $('tab-settings').hidden=b.dataset.t!=='settings';
 };
+/* ── быстрое добавление: закладка передаёт текст вакансии в адресе (#add=…), на сервер он не уходит ── */
+(function(){
+  const m=location.hash.match(/^#add=(.+)$/);
+  if(!m)return;
+  try{sessionStorage.setItem('pendingAdd',decodeURIComponent(m[1]));}catch{}
+  history.replaceState(null,'',location.pathname+location.search);
+})();
+async function takePending(){
+  let raw=null;
+  try{raw=sessionStorage.getItem('pendingAdd');sessionStorage.removeItem('pendingAdd');}catch{}
+  if(!raw)return;
+  let d;try{d=JSON.parse(raw);}catch{return;}
+  if(!d||!d.t)return;
+  const wasShut=localStorage.getItem('addshut')==='1';
+  document.querySelector('#tabs [data-t="jobs"]').click();
+  setAdd(false,true);
+  $('jtext').value='Page title: '+(d.h||'')+'\n\n'+d.t;
+  $('jurl').value=d.u||'';
+  await $('parse').onclick();
+  if(wasShut&&!$('pmsg').classList.contains('err'))setTimeout(()=>setAdd(true,true),2500);
+}
+const BM_CODE=String.raw`(function(){var t=getSelection().toString().trim();if(!t){var q=['.jobs-search__job-details--container','.job-view-layout','.jobsearch-ViewjobPaneWrapper','.jobsearch-JobComponent','main'],i,e;for(i=0;i<q.length&&!t;i++){e=document.querySelector(q[i]);if(e&&e.innerText.length>300)t=e.innerText.trim()}}if(!t)t=document.body.innerText.trim();t=t.replace(/\n{3,}/g,'\n\n').slice(0,12000);window.open('@@SITE@@\x23add='+encodeURIComponent(JSON.stringify({t:t,u:location.href,h:document.title})),'_blank')})();void 0`;
+const bmHref=()=>'javascript:'+BM_CODE.replace('@@SITE@@',location.origin+location.pathname);
+$('bm').setAttribute('href',bmHref());
+$('bm').onclick=e=>{e.preventDefault();toast('Перетащи эту кнопку на панель закладок браузера');};
+$('bmcopy').onclick=()=>navigator.clipboard.writeText(bmHref()).then(()=>toast('Код закладки скопирован'));
 const root=document.documentElement;
 function applyTheme(pal,mode,anim){
   if(anim){root.classList.add('tx');setTimeout(()=>root.classList.remove('tx'),450);}
