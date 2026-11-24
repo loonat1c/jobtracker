@@ -238,7 +238,7 @@ import{getDatabase,ref,onValue,set,push,update,remove}from"https://www.gstatic.c
 import{getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const cfg={apiKey:"AIzaSyBuEw_53-Oqg0IGBp4oc-rNTwNVXLiGW00",authDomain:"jobfindersean.firebaseapp.com",
-  databaseURL:"https://jobfindersean-default-rtdb.europe-west1.firebasedatabase.app", // проверь в Realtime Database
+  databaseURL:"https://jobfindersean-default-rtdb.firebaseio.com", // проверь в Realtime Database
   projectId:"jobfindersean",storageBucket:"jobfindersean.firebasestorage.app",messagingSenderId:"183526713019",appId:"1:183526713019:web:323eddddb7abcbbf0f2b9e"};
 const app=initializeApp(cfg),db=getDatabase(app),auth=getAuth(app);
 
