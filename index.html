@@ -142,6 +142,18 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
 .star:hover:not(:disabled){transform:scale(1.2)}
 .job.fav{border-top-color:color-mix(in srgb,var(--acc) 50%,transparent);border-right-color:color-mix(in srgb,var(--acc) 50%,transparent);border-bottom-color:color-mix(in srgb,var(--acc) 50%,transparent);box-shadow:var(--hi),var(--sh),0 0 26px -10px var(--acc)}
 #favbtn{font-size:18px;line-height:1;padding:6px 14px}
+.fold{display:grid;grid-template-rows:1fr;transition:grid-template-rows .4s cubic-bezier(.2,.8,.2,1),opacity .3s}
+.fold>div{overflow:hidden;min-height:0;padding:12px 4px 4px;margin:0 -4px}
+.fold.shut{grid-template-rows:0fr;opacity:0}
+#addbox h2{margin:0}
+.jl{display:flex;flex-direction:column;gap:6px;min-width:0}
+.jr{display:flex;flex-direction:column;align-items:flex-end;gap:7px;text-align:right}
+.loc{display:inline-flex;align-items:center;gap:6px;width:fit-content;font-weight:600;font-size:13.5px;padding:3px 12px 3px 9px;border-radius:999px;background:color-mix(in srgb,var(--blue) 17%,transparent);color:var(--blue);border:1px solid color-mix(in srgb,var(--blue) 38%,transparent)}
+.loc svg{flex:none}
+.sal{font-weight:700;font-size:15px;white-space:nowrap}
+.age{font-size:12.5px;color:var(--mut);white-space:nowrap}
+.go{font-size:13px;font-weight:600;color:var(--acc);text-decoration:none;padding:4px 12px;border:1px solid var(--line);border-radius:999px;transition:background .2s,color .2s,border-color .2s}
+.go:hover{background:var(--acc);color:var(--on);border-color:var(--acc)}
 .pmsg{font-size:13.5px;color:var(--mut);margin-top:8px}
 .pmsg:empty{display:none}
 .pmsg.err{color:var(--bad)}
@@ -186,14 +198,16 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
   </section>
 
   <div class="pane" id="tab-jobs">
-  <section class="box">
-    <h2>Новая вакансия</h2>
+  <section class="box" id="addbox">
+    <div class="row"><h2>Новая вакансия</h2><span class="grow"></span><button class="chip" id="addtog" aria-expanded="true" aria-controls="addfold">Свернуть</button></div>
+    <div class="fold" id="addfold"><div>
     <textarea id="jtext" placeholder="Вставь полный текст вакансии"></textarea>
     <div class="row" style="margin-top:10px">
       <input id="jurl" class="grow" placeholder="Ссылка на вакансию (необязательно)">
       <button id="parse">Разобрать и сохранить</button>
     </div>
     <div class="pmsg" id="pmsg" role="status"></div>
+    </div></div>
   </section>
 
   <section>
@@ -224,13 +238,22 @@ import{getDatabase,ref,onValue,set,push,update,remove}from"https://www.gstatic.c
 import{getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const cfg={apiKey:"AIzaSyBuEw_53-Oqg0IGBp4oc-rNTwNVXLiGW00",authDomain:"jobfindersean.firebaseapp.com",
-  databaseURL:"https://jobfindersean-default-rtdb.firebaseio.com", // проверь в Realtime Database
+  databaseURL:"https://jobfindersean-default-rtdb.europe-west1.firebasedatabase.app", // проверь в Realtime Database
   projectId:"jobfindersean",storageBucket:"jobfindersean.firebasestorage.app",messagingSenderId:"183526713019",appId:"1:183526713019:web:323eddddb7abcbbf0f2b9e"};
 const app=initializeApp(cfg),db=getDatabase(app),auth=getAuth(app);
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const arr=x=>Array.isArray(x)?x:[];
+const PIN='<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>';
+function safeUrl(u){u=(u||'').trim();if(!u)return'';if(!/^https?:\/\//i.test(u))u='https://'+u;try{return new URL(u).href}catch{return''}}
+function ago(ts){
+  if(!ts)return'';
+  const a=new Date(ts),n=new Date();
+  const d=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(a.getFullYear(),a.getMonth(),a.getDate()))/864e5);
+  return d<=0?'сегодня':d===1?'вчера':d+' дн. назад';
+}
+const addedStr=ts=>ts?new Date(ts).toLocaleString('ru',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const ST={new:['Новая','var(--blue)'],applied:['Отправлено','var(--acc)'],interview:['Собеседование','var(--ok)'],offer:['Оффер','var(--vio)'],rejected:['Отказ','var(--bad)']};
 let jobs={},filter='all',openId=null,started=false;const seen=new Set();
 
@@ -316,11 +339,18 @@ function render(){
   const fmt=d=>new Date(d+'T00:00').toLocaleDateString('ru',{day:'numeric',month:'short'});
   $('jobs').innerHTML=list.length?list.map(([k,j],i)=>{
     const [sl,sc]=ST[j.status]||ST.new;
-    const meta=[j.company,j.location,j.salary].filter(Boolean).map(esc).join(' • ');
+    const meta=esc(j.company||'');
+    const href=safeUrl(j.url);
     const dt=[j.applied?'Отправлено '+fmt(j.applied):'',j.follow?'Follow-up '+fmt(j.follow):''].filter(Boolean).join(' • ');
     const over=j.follow&&j.follow<=today&&!['offer','rejected'].includes(j.status);
-    return `<div class="job${seen.has(k)?'':' in'}${!favOff&&j.fav?' fav':''}" style="--c:${sc};--d:${Math.min(i,8)*40}ms" data-id="${k}"><b>${favOff?'':`<button class="star${j.fav?' on':''}" data-fav="${k}" title="Закрепить" aria-label="Закрепить">${j.fav?'★':'☆'}</button>`}${esc(j.title)}</b><span class="badge">${sl}</span>
-      <span class="meta">${meta}</span><span class="meta${over?' due':''}">${dt}</span>
+    return `<div class="job${seen.has(k)?'':' in'}${!favOff&&j.fav?' fav':''}" style="--c:${sc};--d:${Math.min(i,8)*40}ms" data-id="${k}"><div class="jl"><b>${favOff?'':`<button class="star${j.fav?' on':''}" data-fav="${k}" title="Закрепить" aria-label="Закрепить">${j.fav?'★':'☆'}</button>`}${esc(j.title)}</b>
+      ${meta?`<span class="meta">${meta}</span>`:''}
+      ${j.location?`<span class="loc">${PIN}${esc(j.location)}</span>`:''}
+      ${dt?`<span class="meta${over?' due':''}">${dt}</span>`:''}</div>
+      <div class="jr"><span class="badge">${sl}</span>
+      ${j.salary?`<span class="sal">${esc(j.salary)}</span>`:''}
+      <span class="age" title="Добавлена ${addedStr(j.ts)}">${ago(j.ts)}</span>
+      ${href?`<a class="go" href="${esc(href)}" target="_blank" rel="noopener" title="Открыть вакансию">Открыть ↗</a>`:''}</div>
       ${arr(j.stack).length?`<div class="tags">${arr(j.stack).slice(0,8).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div>`;
   }).join(''):'<div class="empty">Пока пусто. Вставь текст вакансии выше.</div>';
   list.forEach(([k])=>seen.add(k));
@@ -329,6 +359,7 @@ function render(){
 $('jobs').onclick=e=>{
   const st=e.target.closest('[data-fav]');
   if(st){const id=st.dataset.fav;update(ref(db,'jobs/'+id),{fav:!jobs[id].fav});return;}
+  if(e.target.closest('a'))return;
   const c=e.target.closest('[data-id]');if(c)openJob(c.dataset.id);
 };
 
@@ -338,12 +369,13 @@ function openJob(id){
   $('modal').innerHTML=`
     <h2>${esc(j.title)}</h2>
     <div class="meta" style="color:var(--mut)">${[j.company,j.location,j.salary].filter(Boolean).map(esc).join(' • ')}</div>
+    <div style="color:var(--mut);font-size:13.5px">Добавлена в трекер: ${addedStr(j.ts)} · ${ago(j.ts)}</div>
     ${j.summary?`<p>${esc(j.summary)}</p>`:''}
     ${arr(j.req).length?`<ul>${arr(j.req).map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`:''}
     <div class="row">
       <button class="chip${j.fav?' on':''}" id="mfav">${j.fav?'★ В избранном':'☆ В избранное'}</button>
       <select id="mst" style="width:auto">${Object.entries(ST).map(([k,v])=>`<option value="${k}"${j.status===k?' selected':''}>${v[0]}</option>`).join('')}</select>
-      ${j.url?`<a href="${esc(j.url)}" target="_blank" rel="noopener" style="color:var(--acc)">Открыть вакансию</a>`:''}
+      ${safeUrl(j.url)?`<a href="${esc(safeUrl(j.url))}" target="_blank" rel="noopener" style="color:var(--acc)">Открыть вакансию ↗</a>`:''}
     </div>
     <div class="row">
       <div class="grow"><label>Дата отправки</label><input type="date" id="mapp" value="${esc(j.applied||'')}"></div>
@@ -406,6 +438,12 @@ function start(){
   onValue(ref(db,'jobs'),s=>{jobs=s.val()||{};render();},e=>{$('dbwarn').hidden=false;$('dbwarn').textContent='База данных: '+e.message;});
   onValue(ref(db,'profile'),s=>{const p=s.val();if(p&&document.activeElement!==$('profile'))$('profile').value=p.text||'';});
 }
+function setAdd(shut){
+  $('addfold').classList.toggle('shut',shut);$('addfold').inert=shut;
+  const b=$('addtog');b.textContent=shut?'Развернуть':'Свернуть';b.setAttribute('aria-expanded',String(!shut));
+}
+setAdd(localStorage.getItem('addshut')==='1');
+$('addtog').onclick=()=>{const shut=!$('addfold').classList.contains('shut');setAdd(shut);localStorage.setItem('addshut',shut?'1':'0');};
 $('tabs').onclick=e=>{
   const b=e.target.closest('[data-t]');if(!b)return;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===b));
