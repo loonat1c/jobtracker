@@ -413,22 +413,41 @@ function extractJson(t){
   if(a<0||z<a)throw new Error('DeepSeek вернул не JSON, попробуй ещё раз');
   return JSON.parse(t.slice(a,z+1));
 }
+async function addJob(text,url,step){
+  const focused=focusText(text),pt=(text.match(/^Page title:.*$/mi)||[''])[0];
+  if(step)step('Отправляю в DeepSeek…');
+  const j=extractJson(await ai([{role:'system',content:SYS_PARSE},{role:'user',content:((pt&&!focused.includes(pt))?pt+'\n\n':'')+focused.slice(0,12000)}],true));
+  if(step)step('Сохраняю в базу…');
+  const rec={title:j.title||'Без названия',company:j.company||'',location:j.location||'',salary:j.salary||'',
+    mode:normMode(j.work_mode),modeNote:String(j.work_note||''),stack:arr(j.stack),req:arr(j.requirements),summary:j.summary||'',
+    url:url||'',text:cleanText(focused,j),status:'new',letter:'',ts:Date.now()};
+  const wait=new Promise((_,rej)=>setTimeout(()=>rej(new Error('База данных не отвечает. Проверь databaseURL в index.html: он должен совпадать с адресом на странице Realtime Database')),12000));
+  await Promise.race([set(push(ref(db,'jobs')),rec),wait]);
+  return rec;
+}
 $('parse').onclick=async()=>{
   const text=$('jtext').value.trim();
   if(!text){pmsg('Вставь текст вакансии',true);return;}
   const b=$('parse');b.disabled=true;b.textContent='Разбираю…';
   try{
-    pmsg('Отправляю в DeepSeek…');
-    const focused=focusText(text),pt=(text.match(/^Page title:.*$/mi)||[''])[0];
-    const j=extractJson(await ai([{role:'system',content:SYS_PARSE},{role:'user',content:((pt&&!focused.includes(pt))?pt+'\n\n':'')+focused.slice(0,12000)}],true));
-    pmsg('Сохраняю в базу…');
-    const wait=new Promise((_,rej)=>setTimeout(()=>rej(new Error('База данных не отвечает. Проверь databaseURL в index.html: он должен совпадать с адресом на странице Realtime Database')),12000));
-    await Promise.race([set(push(ref(db,'jobs')),{title:j.title||'Без названия',company:j.company||'',location:j.location||'',salary:j.salary||'',
-      mode:normMode(j.work_mode),modeNote:String(j.work_note||''),stack:arr(j.stack),req:arr(j.requirements),summary:j.summary||'',url:$('jurl').value.trim(),text:cleanText(focused,j),status:'new',letter:'',ts:Date.now()}),wait]);
+    await addJob(text,$('jurl').value.trim(),pmsg);
     $('jtext').value='';$('jurl').value='';
     pmsg('Вакансия сохранена');setTimeout(()=>pmsg(''),3000);
   }catch(e){console.error(e);pmsg(e.message,true);}
   b.disabled=false;b.textContent='Разобрать и сохранить';
+};
+// Вызывается расширением Chrome, когда трекер уже открыт: вакансия добавляется без открытия новых вкладок
+window.jtAdd=async function(d){
+  if(!started){
+    try{sessionStorage.setItem('pendingAdd',JSON.stringify(d));}catch{}
+    return {ok:false,locked:true};
+  }
+  if(!d||!d.t)return {ok:false,error:'Пустой текст страницы'};
+  try{
+    const rec=await addJob('Page title: '+(d.h||'')+'\n\n'+d.t,d.u||'');
+    toast('Добавлена: '+rec.title);
+    return {ok:true,title:rec.title,company:rec.company};
+  }catch(e){console.error(e);return {ok:false,error:e.message};}
 };
 
 /* ── список ── */
