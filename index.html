@@ -337,7 +337,7 @@ async function ai(messages,json){
     throw e;
   }finally{clearTimeout(tm);}
 }
-const SYS_PARSE='Extract the job posting into json with keys: title, company, location, salary, employment_type, work_mode (one of: remote, hybrid, onsite, other, unspecified; use unspecified when the posting does not say, never guess), work_note (short detail such as "3 days in office" or "US only", empty if none), stack (array of technologies), requirements (array of short strings, max 8), summary (1-2 sentences in Russian). Use empty string or empty array if unknown. Return only json.';
+const SYS_PARSE='Extract the job posting into json with keys: title, company, location, salary, employment_type, work_mode (one of: remote, hybrid, onsite, other, unspecified; use unspecified when the posting does not say, never guess), work_note (short detail such as "3 days in office" or "US only", empty if none), text_start (the first 8-12 words of the vacancy text itself, starting at its job title or header, copied EXACTLY character for character from the input), text_end (the last 8-12 words of the vacancy text itself, before any footer, similar jobs or unrelated listings, copied EXACTLY), stack (array of technologies), requirements (array of short strings, max 8), summary (1-2 sentences in Russian). Use empty string or empty array if unknown. Return only json.';
 const SYS_LETTER='You write concise, honest cover letters in English (150-220 words, 3 short paragraphs). Use only facts from the candidate profile, never invent experience. Match the candidate to the key requirements of the job. Friendly professional tone, no clichés, no placeholders except a greeting like "Dear Hiring Team,". Output only the letter text.';
 
 /* ── настройки ── */
@@ -349,6 +349,32 @@ $('saveSet').onclick=async()=>{
 };
 
 /* ── добавить вакансию ── */
+/* clean:start */
+const SYS_CLEAN=`You receive text copied from a job-board page that also contains site navigation, buttons, ads, other listings and footers. Return json with two keys: text_start (the first 8-12 words of the vacancy text itself, starting at its job title or header, copied EXACTLY character for character) and text_end (the last 8-12 words of the vacancy text itself, before any footer, similar jobs or unrelated listings, copied EXACTLY). Return only json.`;
+const UI_LINES=/^(apply|easy apply|apply now|save|saved|save job|share|report|report this job|show more|show less|see more|see less|show more options|set alert for similar jobs|meet the hiring team|message|follow|promoted|premium|try premium|sign in|join now|about the job|about this job|job details|job description|full job description|откликнуться|поделиться|сохранить|показать ещё|показать еще)$/i;
+function locate(text,phrase,fromEnd){
+  const w=String(phrase||'').trim().split(/\s+/).filter(Boolean);
+  for(const n of [...new Set([w.length,8,5,3])]){
+    if(n<3||n>w.length)continue;
+    const part=fromEnd?w.slice(-n):w.slice(0,n);
+    const re=new RegExp(part.map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('\\s+'),'gi');
+    let m,last=null;
+    while((m=re.exec(text))){last=m;if(!fromEnd)break;}
+    if(last)return fromEnd?last.index+last[0].length:last.index;
+  }
+  return -1;
+}
+function cleanText(raw,j){
+  raw=String(raw||'').replace(/\r/g,'');
+  let t=raw;
+  const a=locate(t,j&&j.text_start,false);
+  if(a>=0)t=t.slice(a);
+  const b=locate(t,j&&j.text_end,true);
+  if(b>0)t=t.slice(0,b);
+  t=t.split('\n').map(l=>l.trim()).filter(l=>!/^Page title:/i.test(l)&&!(l.length<=40&&UI_LINES.test(l))).join('\n').replace(/\n{3,}/g,'\n\n').trim();
+  return t.length>=150?t:raw.trim();
+}
+/* clean:end */
 function pmsg(t,err){const m=$('pmsg');m.textContent=t||'';m.classList.toggle('err',!!err);}
 function extractJson(t){
   t=t.replace(/```json|```/g,'');
@@ -366,7 +392,7 @@ $('parse').onclick=async()=>{
     pmsg('Сохраняю в базу…');
     const wait=new Promise((_,rej)=>setTimeout(()=>rej(new Error('База данных не отвечает. Проверь databaseURL в index.html: он должен совпадать с адресом на странице Realtime Database')),12000));
     await Promise.race([set(push(ref(db,'jobs')),{title:j.title||'Без названия',company:j.company||'',location:j.location||'',salary:j.salary||'',
-      mode:normMode(j.work_mode),modeNote:String(j.work_note||''),stack:arr(j.stack),req:arr(j.requirements),summary:j.summary||'',url:$('jurl').value.trim(),text,status:'new',letter:'',ts:Date.now()}),wait]);
+      mode:normMode(j.work_mode),modeNote:String(j.work_note||''),stack:arr(j.stack),req:arr(j.requirements),summary:j.summary||'',url:$('jurl').value.trim(),text:cleanText(text,j),status:'new',letter:'',ts:Date.now()}),wait]);
     $('jtext').value='';$('jurl').value='';
     pmsg('Вакансия сохранена');setTimeout(()=>pmsg(''),3000);
   }catch(e){console.error(e);pmsg(e.message,true);}
@@ -459,7 +485,9 @@ function openJob(id){
       <button class="danger" id="mdel">Удалить</button>
       <button class="ghost" id="mclose">Закрыть</button>
     </div>
-    <details><summary style="font-weight:500;color:var(--mut)">Исходный текст</summary><p style="white-space:pre-wrap;color:var(--mut);font-size:13.5px">${esc(j.text)}</p></details>`;
+    <details><summary style="font-weight:500;color:var(--mut)">Текст вакансии</summary>
+      <p id="mtext" style="white-space:pre-wrap;color:var(--mut);font-size:13.5px;margin:10px 0">${esc(j.text)}</p>
+      <button class="ghost" id="mclean">Очистить текст</button></details>`;
   $('ov').classList.add('show');
   $('mst').onchange=()=>{
     const u={status:$('mst').value};
@@ -470,6 +498,17 @@ function openJob(id){
   $('mfol').onchange=()=>update(ref(db,'jobs/'+id),{follow:$('mfol').value});
   $('mfav').onclick=()=>{const nf=!jobs[id].fav;update(ref(db,'jobs/'+id),{fav:nf});$('mfav').classList.toggle('on',nf);$('mfav').textContent=nf?'★ В избранном':'☆ В избранное';};
   $('mnote').onchange=()=>update(ref(db,'jobs/'+id),{note:$('mnote').value});
+  $('mclean').onclick=async()=>{
+    const b=$('mclean');b.disabled=true;b.textContent='Чищу…';
+    try{
+      const cur=(jobs[id]||j).text||'';
+      const jm=extractJson(await ai([{role:'system',content:SYS_CLEAN},{role:'user',content:cur.slice(0,12000)}],true));
+      const t=cleanText(cur,jm);
+      await update(ref(db,'jobs/'+id),{text:t});
+      $('mtext').textContent=t;toast('Текст очищен');
+    }catch(e){toast(e.message);}
+    b.disabled=false;b.textContent='Очистить текст';
+  };
   $('mmode').onchange=()=>{
     const v=$('mmode').value;update(ref(db,'jobs/'+id),{mode:v});
     $('mbox').style.setProperty('--c',(MODES[v]||[])[1]||'var(--mut)');$('mval').textContent=MODES[v]?MODES[v][0]:'Не указан';
