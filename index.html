@@ -337,7 +337,7 @@ async function ai(messages,json){
     throw e;
   }finally{clearTimeout(tm);}
 }
-const SYS_PARSE='Extract the job posting into json with keys: title, company, location, salary, employment_type, work_mode (one of: remote, hybrid, onsite, other, unspecified; use unspecified when the posting does not say, never guess), work_note (short detail such as "3 days in office" or "US only", empty if none), text_start (the first 8-12 words of the vacancy text itself, starting at its job title or header, copied EXACTLY character for character from the input), text_end (the last 8-12 words of the vacancy text itself, before any footer, similar jobs or unrelated listings, copied EXACTLY), stack (array of technologies), requirements (array of short strings, max 8), summary (1-2 sentences in Russian). Use empty string or empty array if unknown. Return only json.';
+const SYS_PARSE='The input is text copied from a job-board page and may also contain a list of other job listings: extract only the vacancy named in the "Page title" line or described in the detailed posting. Return json with keys: title, company, location (the location of this vacancy, not the search area or distance), salary, employment_type, work_mode (one of: remote, hybrid, onsite, other, unspecified; use unspecified when the posting does not say, never guess), work_note (short detail such as "3 days in office" or "US only", empty if none), text_start (the first 8-12 words of the job description body itself, i.e. the first sentence after headings such as "About the job" or "Job description"; skip the header with title, location, applicant counts, buttons and promotions; never take it from a list of search results; copied EXACTLY character for character from the input), text_end (the last 8-12 words of the last paragraph about the job itself: duties, requirements, pay, benefits; exclude equal-opportunity statements, legal disclaimers, footers and similar jobs; copied EXACTLY), stack (array of technologies), requirements (array of short strings, max 8), summary (1-2 sentences in Russian). Use empty string or empty array if unknown. Return only json.';
 const SYS_LETTER='You write concise, honest cover letters in English (150-220 words, 3 short paragraphs). Use only facts from the candidate profile, never invent experience. Match the candidate to the key requirements of the job. Friendly professional tone, no clichés, no placeholders except a greeting like "Dear Hiring Team,". Output only the letter text.';
 
 /* ── настройки ── */
@@ -350,27 +350,58 @@ $('saveSet').onclick=async()=>{
 
 /* ── добавить вакансию ── */
 /* clean:start */
-const SYS_CLEAN=`You receive text copied from a job-board page that also contains site navigation, buttons, ads, other listings and footers. Return json with two keys: text_start (the first 8-12 words of the vacancy text itself, starting at its job title or header, copied EXACTLY character for character) and text_end (the last 8-12 words of the vacancy text itself, before any footer, similar jobs or unrelated listings, copied EXACTLY). Return only json.`;
-const UI_LINES=/^(apply|easy apply|apply now|save|saved|save job|share|report|report this job|show more|show less|see more|see less|show more options|set alert for similar jobs|meet the hiring team|message|follow|promoted|premium|try premium|sign in|join now|about the job|about this job|job details|job description|full job description|откликнуться|поделиться|сохранить|показать ещё|показать еще)$/i;
-function locate(text,phrase,fromEnd){
+const SYS_CLEAN=`You receive text copied from a job-board page that also contains site navigation, buttons, ads, other listings and footers. Return json with two keys: text_start (the first 8-12 words of the job description body itself, i.e. the first sentence after headings such as "About the job" or "Job description"; skip the header with title, location, applicant counts, buttons and promotions; never take it from a list of search results; copied EXACTLY character for character) and text_end (the last 8-12 words of the last paragraph about the job itself: duties, requirements, pay, benefits; exclude equal-opportunity statements, legal disclaimers, footers and similar jobs; copied EXACTLY). Return only json.`;
+const UI_LINES=/^(apply|easy apply|apply now|apply on company site|save|saved|save job|share|report|report this job|show more|show less|see more|see less|show more options|set alert for similar jobs|meet the hiring team|message|follow|promoted|premium|try premium|sign in|join now|about the job|about this job|job details|job post details|return to search result|view similar jobs with this employer|job description|full job description|откликнуться|поделиться|сохранить|показать ещё|показать еще|показать больше|показать меньше|подать заявку|отслеживать|просмотрена|об этой вакансии|о вакансии|получать оповещения для этого запроса)$/i;
+function matches(text,phrase,fromEnd,union){
   const w=String(phrase||'').trim().split(/\s+/).filter(Boolean);
-  for(const n of [...new Set([w.length,8,5,3])]){
+  const seen=new Map();
+  for(const n of [...new Set([w.length,6,4,3])]){
     if(n<3||n>w.length)continue;
     const part=fromEnd?w.slice(-n):w.slice(0,n);
     const re=new RegExp(part.map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('\\s+'),'gi');
-    let m,last=null;
-    while((m=re.exec(text))){last=m;if(!fromEnd)break;}
-    if(last)return fromEnd?last.index+last[0].length:last.index;
+    let m,found=false;
+    while((m=re.exec(text))){seen.set(m.index,{i:m.index,e:m.index+m[0].length});found=true;}
+    if(found&&!union)break;
   }
-  return -1;
+  return [...seen.values()].sort((x,y)=>x.i-y.i);
+}
+// Страница поиска: слева список вакансий и подвал сайта, справа нужная вакансия. Отрезаем всё до подвала/заголовка деталей.
+function focusText(raw){
+  let t=String(raw||'').replace(/\r/g,'');
+  for(const re of [/^.*LinkedIn Corporation.*$/gmi,/^(Job Post Details|Return to Search Result)\s*$/gmi]){
+    let m;const ends=[];
+    while((m=re.exec(t)))ends.push(m.index+m[0].length);
+    const k=ends.reverse().find(e=>t.length-e>=800);
+    if(k!==undefined){t=t.slice(k);break;}
+  }
+  return t;
 }
 function cleanText(raw,j){
   raw=String(raw||'').replace(/\r/g,'');
   let t=raw;
-  const a=locate(t,j&&j.text_start,false);
-  if(a>=0)t=t.slice(a);
-  const b=locate(t,j&&j.text_end,true);
-  if(b>0)t=t.slice(0,b);
+  const ends=matches(t,j&&j.text_end,true,false);
+  let endPos=ends.length?ends[ends.length-1].e:-1;
+  let st=matches(t,j&&j.text_start,false,true).filter(x=>endPos<0||x.i<endPos);
+  const atLine=st.filter(x=>x.i===0||t[x.i-1]==='\n');
+  if(atLine.length)st=atLine;
+  const lim=endPos<0?t.length:endPos;
+  let a=-1;
+  if(st.length){
+    // заголовок вакансии может встречаться и в списке результатов: берём последнее вхождение, после которого ещё достаточно текста
+    const good=st.filter(x=>lim-x.i>=500);
+    a=(good.length?good[good.length-1]:st[0]).i;
+  }else{
+    const re=/^(Job Post Details|Return to Search Result)\s*$/gmi;let m,last=-1;
+    while((m=re.exec(t)))last=m.index+m[0].length;
+    if(last>=0&&(endPos<0||last<endPos))a=last;
+  }
+  if(a>0){t=t.slice(a);if(endPos>0)endPos-=a;}
+  if(endPos>0&&endPos<t.length)t=t.slice(0,endPos);
+  else{
+    // конец не найден: режем по типичным блокам после описания
+    const re=/^(Powered by\b.*|О компании|About the company|Похожие вакансии|Similar jobs|People also viewed|Получите доступ к статистике.*|Активируйте подписку Premium.*|Try Premium.*)\s*$/gmi;let m;
+    while((m=re.exec(t))){if(m.index>400){t=t.slice(0,m.index);break;}}
+  }
   t=t.split('\n').map(l=>l.trim()).filter(l=>!/^Page title:/i.test(l)&&!(l.length<=40&&UI_LINES.test(l))).join('\n').replace(/\n{3,}/g,'\n\n').trim();
   return t.length>=150?t:raw.trim();
 }
@@ -388,11 +419,12 @@ $('parse').onclick=async()=>{
   const b=$('parse');b.disabled=true;b.textContent='Разбираю…';
   try{
     pmsg('Отправляю в DeepSeek…');
-    const j=extractJson(await ai([{role:'system',content:SYS_PARSE},{role:'user',content:text.slice(0,12000)}],true));
+    const focused=focusText(text),pt=(text.match(/^Page title:.*$/mi)||[''])[0];
+    const j=extractJson(await ai([{role:'system',content:SYS_PARSE},{role:'user',content:((pt&&!focused.includes(pt))?pt+'\n\n':'')+focused.slice(0,12000)}],true));
     pmsg('Сохраняю в базу…');
     const wait=new Promise((_,rej)=>setTimeout(()=>rej(new Error('База данных не отвечает. Проверь databaseURL в index.html: он должен совпадать с адресом на странице Realtime Database')),12000));
     await Promise.race([set(push(ref(db,'jobs')),{title:j.title||'Без названия',company:j.company||'',location:j.location||'',salary:j.salary||'',
-      mode:normMode(j.work_mode),modeNote:String(j.work_note||''),stack:arr(j.stack),req:arr(j.requirements),summary:j.summary||'',url:$('jurl').value.trim(),text:cleanText(text,j),status:'new',letter:'',ts:Date.now()}),wait]);
+      mode:normMode(j.work_mode),modeNote:String(j.work_note||''),stack:arr(j.stack),req:arr(j.requirements),summary:j.summary||'',url:$('jurl').value.trim(),text:cleanText(focused,j),status:'new',letter:'',ts:Date.now()}),wait]);
     $('jtext').value='';$('jurl').value='';
     pmsg('Вакансия сохранена');setTimeout(()=>pmsg(''),3000);
   }catch(e){console.error(e);pmsg(e.message,true);}
@@ -502,8 +534,8 @@ function openJob(id){
     const b=$('mclean');b.disabled=true;b.textContent='Чищу…';
     try{
       const cur=(jobs[id]||j).text||'';
-      const jm=extractJson(await ai([{role:'system',content:SYS_CLEAN},{role:'user',content:cur.slice(0,12000)}],true));
-      const t=cleanText(cur,jm);
+      const jm=extractJson(await ai([{role:'system',content:SYS_CLEAN},{role:'user',content:focusText(cur).slice(0,12000)}],true));
+      const t=cleanText(focusText(cur),jm);
       await update(ref(db,'jobs/'+id),{text:t});
       $('mtext').textContent=t;toast('Текст очищен');
     }catch(e){toast(e.message);}
@@ -587,7 +619,7 @@ async function takePending(){
   await $('parse').onclick();
   if(wasShut&&!$('pmsg').classList.contains('err'))setTimeout(()=>setAdd(true,true),2500);
 }
-const BM_CODE=String.raw`(function(){var t=getSelection().toString().trim();if(!t){var q=['.jobs-search__job-details--container','.job-view-layout','.jobsearch-ViewjobPaneWrapper','.jobsearch-JobComponent','main'],i,e;for(i=0;i<q.length&&!t;i++){e=document.querySelector(q[i]);if(e&&e.innerText.length>300)t=e.innerText.trim()}}if(!t)t=document.body.innerText.trim();t=t.replace(/\n{3,}/g,'\n\n').slice(0,12000);window.open('@@SITE@@\x23add='+encodeURIComponent(JSON.stringify({t:t,u:location.href,h:document.title})),'_blank')})();void 0`;
+const BM_CODE=String.raw`(function(){var t=getSelection().toString().trim();if(!t){var q=['.jobs-search__job-details--container','.job-view-layout','.jobsearch-ViewjobPaneWrapper','.jobsearch-JobComponent','main'],i,e;for(i=0;i<q.length&&!t;i++){e=document.querySelector(q[i]);if(e&&e.innerText.length>300)t=e.innerText.trim()}}if(!t)t=document.body.innerText.trim();t=t.replace(/\n{3,}/g,'\n\n').slice(0,40000);window.open('@@SITE@@\x23add='+encodeURIComponent(JSON.stringify({t:t,u:location.href,h:document.title})),'_blank')})();void 0`;
 const bmHref=()=>'javascript:'+BM_CODE.replace('@@SITE@@',location.origin+location.pathname);
 $('bm').setAttribute('href',bmHref());
 $('bm').onclick=e=>{e.preventDefault();toast('Перетащи эту кнопку на панель закладок браузера');};
