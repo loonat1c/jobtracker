@@ -6,15 +6,15 @@
 <title>Job Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--r:14px}
+:root{--r:14px;--warn:#f5c542}
 :root,[data-pal=amber][data-mode=dark]{--bg:#0f0e0c;--s1:#1a1814;--s2:#26231d;--line:rgba(255,255,255,.12);--text:#f2eee5;--mut:#9ea6b3;--acc:#ecbc52;--on:#1c1606;--ok:#52c993;--bad:#ef6b59;--blue:#72b2f6;--vio:#bb98f3}
 [data-pal=amber][data-mode=light]{--bg:#f7f3ea;--s1:#ffffff;--s2:#efe8d9;--line:rgba(60,40,10,.14);--text:#2c261a;--mut:#7b7566;--acc:#b8780f;--on:#ffffff;--ok:#1f8f5c;--bad:#c9402f;--blue:#2c6fc4;--vio:#7a4fc4}
 [data-pal=ocean][data-mode=dark]{--bg:#090f1b;--s1:#111b2e;--s2:#1a2a45;--line:rgba(255,255,255,.12);--text:#eaf2fc;--mut:#98abc4;--acc:#66b6ff;--on:#07182b;--ok:#4fd0a0;--bad:#f1715f;--blue:#8cc4ff;--vio:#b9a0f6}
 [data-pal=ocean][data-mode=light]{--bg:#edf3fa;--s1:#ffffff;--s2:#dde8f5;--line:rgba(20,40,80,.15);--text:#14233a;--mut:#5d7089;--acc:#1b6ad0;--on:#ffffff;--ok:#168a5e;--bad:#c8402f;--blue:#1b6ad0;--vio:#6a46c2}
 [data-pal=mint][data-mode=dark]{--bg:#08120e;--s1:#0f1f19;--s2:#16302a;--line:rgba(255,255,255,.12);--text:#e8f5ee;--mut:#93ada1;--acc:#62d9a3;--on:#05231a;--ok:#62d9a3;--bad:#f27763;--blue:#7ab9f1;--vio:#bb9df3}
 [data-pal=mint][data-mode=light]{--bg:#edf6f0;--s1:#ffffff;--s2:#dbece2;--line:rgba(10,50,30,.15);--text:#12281e;--mut:#587367;--acc:#178a5a;--on:#ffffff;--ok:#178a5a;--bad:#c8442f;--blue:#2a6fc2;--vio:#6e49c0}
-[data-mode=dark]{color-scheme:dark;--hi:inset 0 1px 0 rgba(255,255,255,.17),inset 0 0 0 1px rgba(255,255,255,.03);--sh:0 24px 48px -28px rgba(0,0,0,.8);--aur:1}
-[data-mode=light]{color-scheme:light;--hi:inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 1px rgba(255,255,255,.5);--sh:0 24px 48px -30px rgba(40,55,90,.4);--aur:.6}
+[data-mode=dark]{color-scheme:dark;--hi:inset 0 1px 0 rgba(255,255,255,.17),inset 0 0 0 1px rgba(255,255,255,.03);--sh:0 24px 48px -28px rgba(0,0,0,.8);--aur:1;--warn:#f5c542}
+[data-mode=light]{color-scheme:light;--hi:inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 1px rgba(255,255,255,.5);--sh:0 24px 48px -30px rgba(40,55,90,.4);--aur:.6;--warn:#a35a00}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font:15px/1.5 Onest,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
@@ -149,24 +149,24 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
 .dupb::after{right:auto;left:-6px}
 .dupb:hover:not(:disabled){transform:scale(1.18)}
 @keyframes dpulse{0%{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 0 0 rgba(245,197,66,.55)}70%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 0 9px rgba(245,197,66,0)}}
-.dupchip{color:#f5c542;border-color:color-mix(in srgb,#f5c542 45%,transparent)}
+.dupchip{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
 .modal.wide{max-width:940px}
 .dwhy{display:flex;flex-wrap:wrap;gap:6px}
-.dwhy span{font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:999px;color:#f5c542;background:color-mix(in srgb,#f5c542 14%,transparent);border:1px solid color-mix(in srgb,#f5c542 38%,transparent)}
+.dwhy span{font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:999px;color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent);border:1px solid color-mix(in srgb,var(--warn) 38%,transparent)}
 .dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
 .dcard{display:flex;flex-direction:column;gap:9px;padding:14px;border-radius:16px;border:1px solid var(--line);background:color-mix(in srgb,var(--s2) 45%,transparent);animation:jin .55s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:var(--d,0ms)}
-.dcard.first{border-color:color-mix(in srgb,#f5c542 45%,transparent)}
+.dcard.first{border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
 .dtop{display:flex;gap:12px;align-items:center}
 .dtop b{font-size:15px;line-height:1.3}
 .dring{position:relative;width:44px;height:44px;flex:none}
 .dring svg{width:44px;height:44px;display:block}
 .dring .rbg{fill:none;stroke:var(--line);stroke-width:4}
-.dring .rfg{fill:none;stroke:#f5c542;stroke-width:4;stroke-linecap:round;stroke-dasharray:113.1;stroke-dashoffset:113.1;transform:rotate(-90deg);transform-origin:22px 22px;transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1) .25s;filter:drop-shadow(0 0 4px rgba(245,197,66,.5))}
+.dring .rfg{fill:none;stroke:var(--warn);stroke-width:4;stroke-linecap:round;stroke-dasharray:113.1;stroke-dashoffset:113.1;transform:rotate(-90deg);transform-origin:22px 22px;transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1) .25s;filter:drop-shadow(0 0 4px rgba(245,197,66,.5))}
 .dring span{position:absolute;inset:0;display:grid;place-items:center;font:700 11px Onest,sans-serif}
 .dfacts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;margin:0}
 .dfacts dt{color:var(--mut)}
 .dfacts dd{margin:0;text-align:right;transition:color .3s}
-.dfacts dd.diff{color:#f5c542;font-weight:600}
+.dfacts dd.diff{color:var(--warn);font-weight:600}
 .dcard .row{margin-top:auto;padding-top:4px}
 .bm{display:inline-block;padding:10px 20px;border-radius:999px;font-weight:600;text-decoration:none;color:var(--on);cursor:grab;background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 78%,#fff),var(--acc));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 10px 24px -12px var(--acc)}
 .bm:active{cursor:grabbing}
@@ -546,7 +546,7 @@ $('parse').onclick=async()=>{
   b.disabled=false;b.textContent='Разобрать и сохранить';
 };
 // Вызывается расширением Chrome, когда трекер уже открыт: вакансия добавляется без открытия новых вкладок
-window.jtAdd=async function(d){
+async function jtAddNow(d){
   if(!started){
     try{sessionStorage.setItem('pendingAdd',JSON.stringify(d));}catch{}
     return {ok:false,locked:true};
@@ -555,9 +555,12 @@ window.jtAdd=async function(d){
   try{
     const {rec,similar}=await addJob('Page title: '+(d.h||'')+'\n\n'+d.t,d.u||'');
     toast(similar.length?'Добавлена, но похожая уже есть: '+rec.title:'Добавлена: '+rec.title);
-    return {ok:true,title:rec.title,company:rec.company,dup:similar.length};
+    const o=similar.length?similar[0].job:null;
+    return {ok:true,title:rec.title,company:rec.company,dup:similar.length,dupOf:o?(o.title+(o.company?' · '+o.company:'')):''};
   }catch(e){console.error(e);return {ok:false,error:e.message};}
-};
+}
+let addQueue=Promise.resolve();
+window.jtAdd=d=>{const run=()=>jtAddNow(d);addQueue=addQueue.then(run,run);return addQueue;};
 
 /* ── список ── */
 function renderChips(){
