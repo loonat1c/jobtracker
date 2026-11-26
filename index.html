@@ -142,6 +142,32 @@ h1{background:linear-gradient(100deg,var(--text) 35%,var(--acc));-webkit-backgro
 .star:hover:not(:disabled){transform:scale(1.2)}
 .job.fav{border-top-color:color-mix(in srgb,var(--acc) 50%,transparent);border-right-color:color-mix(in srgb,var(--acc) 50%,transparent);border-bottom-color:color-mix(in srgb,var(--acc) 50%,transparent);box-shadow:var(--hi),var(--sh),0 0 26px -10px var(--acc)}
 #favbtn{font-size:18px;line-height:1;padding:6px 14px}
+[data-tip]{position:relative}
+[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);right:0;white-space:nowrap;padding:6px 11px;border-radius:10px;font:500 12.5px Onest,sans-serif;color:var(--text);background:color-mix(in srgb,var(--s1) 94%,transparent);border:1px solid var(--line);box-shadow:var(--hi),var(--sh);opacity:0;transform:translateY(4px);pointer-events:none;transition:opacity .2s,transform .28s cubic-bezier(.2,.8,.2,1);z-index:30;font-weight:500}
+[data-tip]:hover::after{opacity:1;transform:none}
+.dupb{display:inline-grid;place-items:center;width:20px;height:20px;padding:0;margin-left:8px;border-radius:50%;vertical-align:middle;font:800 13px/1 Onest,sans-serif;color:#2b2100;background:linear-gradient(180deg,#ffd966,#f5b800);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 0 0 rgba(245,197,66,.55);animation:dpulse 2.6s ease-out infinite}
+.dupb::after{right:auto;left:-6px}
+.dupb:hover:not(:disabled){transform:scale(1.18)}
+@keyframes dpulse{0%{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 0 0 rgba(245,197,66,.55)}70%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 0 9px rgba(245,197,66,0)}}
+.dupchip{color:#f5c542;border-color:color-mix(in srgb,#f5c542 45%,transparent)}
+.modal.wide{max-width:940px}
+.dwhy{display:flex;flex-wrap:wrap;gap:6px}
+.dwhy span{font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:999px;color:#f5c542;background:color-mix(in srgb,#f5c542 14%,transparent);border:1px solid color-mix(in srgb,#f5c542 38%,transparent)}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.dcard{display:flex;flex-direction:column;gap:9px;padding:14px;border-radius:16px;border:1px solid var(--line);background:color-mix(in srgb,var(--s2) 45%,transparent);animation:jin .55s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:var(--d,0ms)}
+.dcard.first{border-color:color-mix(in srgb,#f5c542 45%,transparent)}
+.dtop{display:flex;gap:12px;align-items:center}
+.dtop b{font-size:15px;line-height:1.3}
+.dring{position:relative;width:44px;height:44px;flex:none}
+.dring svg{width:44px;height:44px;display:block}
+.dring .rbg{fill:none;stroke:var(--line);stroke-width:4}
+.dring .rfg{fill:none;stroke:#f5c542;stroke-width:4;stroke-linecap:round;stroke-dasharray:113.1;stroke-dashoffset:113.1;transform:rotate(-90deg);transform-origin:22px 22px;transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1) .25s;filter:drop-shadow(0 0 4px rgba(245,197,66,.5))}
+.dring span{position:absolute;inset:0;display:grid;place-items:center;font:700 11px Onest,sans-serif}
+.dfacts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;margin:0}
+.dfacts dt{color:var(--mut)}
+.dfacts dd{margin:0;text-align:right;transition:color .3s}
+.dfacts dd.diff{color:#f5c542;font-weight:600}
+.dcard .row{margin-top:auto;padding-top:4px}
 .bm{display:inline-block;padding:10px 20px;border-radius:999px;font-weight:600;text-decoration:none;color:var(--on);cursor:grab;background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 78%,#fff),var(--acc));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 10px 24px -12px var(--acc)}
 .bm:active{cursor:grabbing}
 .hint{font-size:13.5px;color:var(--mut)}
@@ -301,7 +327,7 @@ function fmtSal(s){
   if(!nums.length)return s.length>18?s.slice(0,17)+'…':s;
   const cur=/€|eur|евро/i.test(s)?'€':/£|gbp/i.test(s)?'£':/₽|rub|руб/i.test(s)?'₽':/\$|usd|доллар/i.test(s)?'$':'';
   const unit=/hour|hr\b|час/i.test(s)?'/hr':/month|\bmo\b|мес/i.test(s)?'/mo':'';
-  const f=n=>n>=1000?(Math.round(n/100)/10)+'k':String(n);
+  const f=n=>n>=10000?Math.round(n/1000)+'k':n>=1000?(Math.round(n/500)/2)+'k':String(Math.round(n));
   return cur+nums.map(f).join('-')+unit;
 }
 const addedStr=ts=>ts?new Date(ts).toLocaleString('ru',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
@@ -406,6 +432,86 @@ function cleanText(raw,j){
   return t.length>=150?t:raw.trim();
 }
 /* clean:end */
+/* dup:start */
+const SH=new WeakMap();
+let dupInfo={byId:{},clusters:{},rel:{}};
+const CO_STOP=new Set(['inc','llc','ltd','corp','corporation','co','company','gmbh','plc','group','the','and','of','lp','llp','pllc']);
+const LEVEL=new Set(['senior','sr','junior','jr','lead','principal','staff','ii','iii','iv','i','1','2','3','4','l1','l2','l3','tier','level','intern','manager','head','director','associate','entry']);
+const normWords=s=>String(s||'').toLowerCase().replace(/[^a-z0-9а-яё\s]/g,' ').split(/\s+/).filter(Boolean);
+const coKey=s=>normWords(s).filter(w=>!CO_STOP.has(w)).join(' ');
+function sameCo(a,b){a=coKey(a);b=coKey(b);if(!a||!b)return false;return a===b||(Math.min(a.length,b.length)>=4&&(a.includes(b)||b.includes(a)));}
+function titleSim(a,b){
+  const A=new Set(normWords(String(a||'').replace(/\([^)]*\)/g,' '))),B=new Set(normWords(String(b||'').replace(/\([^)]*\)/g,' ')));
+  if(!A.size||!B.size)return 0;
+  let n=0;A.forEach(w=>{if(B.has(w))n++;});
+  const j=n/(A.size+B.size-n);
+  const small=Math.min(A.size,B.size);
+  if(n===small&&small>=2){
+    const diff=[...A].filter(w=>!B.has(w)).concat([...B].filter(w=>!A.has(w)));
+    if(!diff.some(w=>LEVEL.has(w)))return Math.max(j,.9);   // "Support Technician" и "Support Technician Remote" — одно и то же, а "Senior ..." — другая вакансия
+  }
+  return j;
+}
+function urlKey(u){
+  u=safeUrl(u);if(!u)return'';
+  try{
+    const x=new URL(u),h=x.hostname.replace(/^www\./,'');let m;
+    if(/linkedin\./.test(h)){m=x.pathname.match(/\/jobs\/view\/(?:[^/]*-)?(\d{6,})/)||x.search.match(/currentJobId=(\d+)/);return m?'li:'+m[1]:'';}
+    if(/indeed\./.test(h)){m=x.search.match(/[?&](?:jk|vjk)=([a-f0-9]+)/i);return m?'in:'+m[1].toLowerCase():'';}
+    if(/glassdoor\./.test(h)){m=x.search.match(/jobListingId=(\d+)/i);return m?'gd:'+m[1]:'';}
+    if(/ziprecruiter\.|monster\.|dice\./.test(h))return'';
+    return x.pathname.length>12?h+x.pathname.replace(/\/$/,''):'';
+  }catch{return'';}
+}
+function shOf(j){
+  let s=SH.get(j);if(s)return s;
+  const w=normWords(String(j.text||'').slice(0,3000)).slice(0,450);
+  s=new Set();for(let i=0;i+4<=w.length;i++)s.add(w.slice(i,i+4).join(' '));
+  SH.set(j,s);return s;
+}
+function jac(a,b){
+  if(!a.size||!b.size)return 0;
+  const [x,y]=a.size<b.size?[a,b]:[b,a];let n=0;
+  x.forEach(k=>{if(y.has(k))n++;});
+  return n/(a.size+b.size-n);
+}
+const locKey=l=>String(l||'').toLowerCase().split(',')[0].replace(/[^a-zа-я0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+function relate(a,b){
+  const ua=urlKey(a.url),ub=urlKey(b.url);
+  const co=sameCo(a.company,b.company),ts=titleSim(a.title,b.title),tx=jac(shOf(a),shOf(b));
+  const la=locKey(a.location),lb=locKey(b.location),locDiff=!!la&&!!lb&&la!==lb;
+  const why=[];let score=0;
+  if(ua&&ua===ub){why.push('Одна и та же ссылка');score=1;}
+  if(co&&ts>=.8&&!(locDiff&&tx<.5)){why.push('Совпадают компания и название');score=Math.max(score,.6+.4*ts);}
+  if(tx>=.6||(tx>=.4&&ts>=.6)){why.push('Текст почти совпадает');score=Math.max(score,tx);}
+  return why.length?{score,why,tx,ts}:null;
+}
+function findSimilar(rec){
+  const out=[];
+  for(const [id,job] of Object.entries(jobs)){const r=relate(rec,job);if(r)out.push({id,job,r});}
+  return out.sort((x,y)=>y.r.score-x.r.score);
+}
+function computeDups(){
+  const ids=Object.keys(jobs),parent={},rel={};
+  const find=x=>parent[x]===x?x:(parent[x]=find(parent[x]));
+  ids.forEach(i=>{parent[i]=i;});
+  for(let x=0;x<ids.length;x++)for(let y=x+1;y<ids.length;y++){
+    const a=ids[x],b=ids[y],A=jobs[a],B=jobs[b];
+    if(!A||!B||(A.notDup&&A.notDup[b])||(B.notDup&&B.notDup[a]))continue;
+    const r=relate(A,B);
+    if(r){rel[a+'|'+b]=r;parent[find(a)]=find(b);}
+  }
+  const groups={};
+  ids.forEach(i=>{const g=find(i);(groups[g]=groups[g]||[]).push(i);});
+  const byId={},clusters={};
+  Object.values(groups).forEach(g=>{
+    if(g.length<2)return;
+    const cid=g.slice().sort()[0];
+    g.forEach(i=>{byId[i]=cid;});clusters[cid]={ids:g};
+  });
+  dupInfo={byId,clusters,rel};
+}
+/* dup:end */
 function pmsg(t,err){const m=$('pmsg');m.textContent=t||'';m.classList.toggle('err',!!err);}
 function extractJson(t){
   t=t.replace(/```json|```/g,'');
@@ -422,17 +528,20 @@ async function addJob(text,url,step){
     mode:normMode(j.work_mode),modeNote:String(j.work_note||''),stack:arr(j.stack),req:arr(j.requirements),summary:j.summary||'',
     url:url||'',text:cleanText(focused,j),status:'new',letter:'',ts:Date.now()};
   const wait=new Promise((_,rej)=>setTimeout(()=>rej(new Error('База данных не отвечает. Проверь databaseURL в index.html: он должен совпадать с адресом на странице Realtime Database')),12000));
+  const similar=findSimilar(rec);
   await Promise.race([set(push(ref(db,'jobs')),rec),wait]);
-  return rec;
+  return {rec,similar};
 }
 $('parse').onclick=async()=>{
   const text=$('jtext').value.trim();
   if(!text){pmsg('Вставь текст вакансии',true);return;}
   const b=$('parse');b.disabled=true;b.textContent='Разбираю…';
   try{
-    await addJob(text,$('jurl').value.trim(),pmsg);
+    const {similar}=await addJob(text,$('jurl').value.trim(),pmsg);
     $('jtext').value='';$('jurl').value='';
-    pmsg('Вакансия сохранена');setTimeout(()=>pmsg(''),3000);
+    if(similar.length){const o=similar[0].job;pmsg('Сохранено, но похоже на повтор: '+o.title+(o.company?' ('+o.company+')':'')+'. Ищи жёлтый значок «!» у карточки.');toast('Похоже на уже сохранённую вакансию');}
+    else pmsg('Вакансия сохранена');
+    setTimeout(()=>pmsg(''),similar.length?7000:3000);
   }catch(e){console.error(e);pmsg(e.message,true);}
   b.disabled=false;b.textContent='Разобрать и сохранить';
 };
@@ -444,17 +553,19 @@ window.jtAdd=async function(d){
   }
   if(!d||!d.t)return {ok:false,error:'Пустой текст страницы'};
   try{
-    const rec=await addJob('Page title: '+(d.h||'')+'\n\n'+d.t,d.u||'');
-    toast('Добавлена: '+rec.title);
-    return {ok:true,title:rec.title,company:rec.company};
+    const {rec,similar}=await addJob('Page title: '+(d.h||'')+'\n\n'+d.t,d.u||'');
+    toast(similar.length?'Добавлена, но похожая уже есть: '+rec.title:'Добавлена: '+rec.title);
+    return {ok:true,title:rec.title,company:rec.company,dup:similar.length};
   }catch(e){console.error(e);return {ok:false,error:e.message};}
 };
 
 /* ── список ── */
 function renderChips(){
-  const n=s=>Object.values(jobs).filter(j=>s==='all'||j.status===s).length;
-  $('chips').innerHTML=[['all','Все'],...Object.entries(ST).map(([k,v])=>[k,v[0]])]
-    .map(([k,l])=>`<button class="chip${filter===k?' on':''}" data-f="${k}">${l} ${n(k)}</button>`).join('');
+  const nd=Object.keys(dupInfo.byId).length;
+  if(filter==='dups'&&!nd)filter='all';
+  const n=s=>s==='dups'?nd:Object.values(jobs).filter(j=>s==='all'||j.status===s).length;
+  $('chips').innerHTML=[['all','Все'],...Object.entries(ST).map(([k,v])=>[k,v[0]]),...(nd?[['dups','! Повторы']]:[])]
+    .map(([k,l])=>`<button class="chip${k==='dups'?' dupchip':''}${filter===k?' on':''}" data-f="${k}">${l} ${n(k)}</button>`).join('');
 }
 $('q').oninput=render;$('sort').onchange=render;
 if(localStorage.getItem('favon')==='0'){$('favbtn').classList.remove('on');$('favbtn').setAttribute('aria-pressed','false');$('favbtn').textContent='☆';}
@@ -469,7 +580,7 @@ function render(){
   const hay=j=>[j.title,j.company,j.location,j.note,(MODES[j.mode]||[])[0],...arr(j.stack)].join(' ').toLowerCase();
   const cmp={new:(a,b)=>b.ts-a.ts,old:(a,b)=>a.ts-b.ts,title:(a,b)=>(a.title||'').localeCompare(b.title||''),
     company:(a,b)=>(a.company||'').localeCompare(b.company||''),follow:(a,b)=>(a.follow||'9999').localeCompare(b.follow||'9999')}[so];
-  let list=Object.entries(jobs).filter(([,j])=>(filter==='all'||j.status===filter)&&(!q||hay(j).includes(q))).sort((a,b)=>cmp(a[1],b[1]));
+  let list=Object.entries(jobs).filter(([k,j])=>(filter==='all'||(filter==='dups'?!!dupInfo.byId[k]:j.status===filter))&&(!q||hay(j).includes(q))).sort((a,b)=>cmp(a[1],b[1]));
   const favOff=!$('favbtn').classList.contains('on');
   if(!favOff)list=[...list.filter(([,j])=>j.fav),...list.filter(([,j])=>!j.fav)];
   const today=new Date().toLocaleDateString('sv');
@@ -481,11 +592,11 @@ function render(){
     const md=MODES[j.mode];
     const dt=[j.applied?'Отправлено '+fmt(j.applied):'',j.follow?'Follow-up '+fmt(j.follow):''].filter(Boolean).join(' • ');
     const over=j.follow&&j.follow<=today&&!['offer','rejected'].includes(j.status);
-    return `<div class="job${seen.has(k)?'':' in'}${!favOff&&j.fav?' fav':''}" style="--c:${sc};--d:${Math.min(i,8)*40}ms" data-id="${k}"><div class="jl"><b>${favOff?'':`<button class="star${j.fav?' on':''}" data-fav="${k}" title="Закрепить" aria-label="Закрепить">${j.fav?'★':'☆'}</button>`}${esc(j.title)}</b>
+    return `<div class="job${seen.has(k)?'':' in'}${!favOff&&j.fav?' fav':''}" style="--c:${sc};--d:${Math.min(i,8)*40}ms" data-id="${k}"><div class="jl"><b>${favOff?'':`<button class="star${j.fav?' on':''}" data-fav="${k}" title="Закрепить" aria-label="Закрепить">${j.fav?'★':'☆'}</button>`}${esc(j.title)}${dupInfo.byId[k]?`<button class="dupb" data-dup="${dupInfo.byId[k]}" data-tip="Похоже на повтор: нажми, чтобы сравнить" aria-label="Похоже на повтор">!</button>`:''}</b>
       <div class="sub">${meta?`<span class="meta">${meta}</span>`:''}${j.location?`<span class="loc">${PIN}${esc(j.location)}</span>`:''}</div>
       ${dt?`<span class="meta${over?' due':''}">${dt}</span>`:''}</div>
       <div class="jr"><span class="badge">${sl}</span>
-      ${j.salary?`<span class="sal" title="${esc(j.salary)}">${esc(fmtSal(j.salary))}</span>`:''}
+      ${j.salary?`<span class="sal" data-tip="${esc(j.salary)}">${esc(fmtSal(j.salary))}</span>`:''}
       <div class="jr3"><span class="age" title="Добавлена ${addedStr(j.ts)}">${ago(j.ts)}</span>${href?`<a class="go" href="${esc(href)}" target="_blank" rel="noopener" title="Открыть вакансию" aria-label="Открыть вакансию">${GO}</a>`:''}</div></div>
       ${md||arr(j.stack).length?`<div class="tags">${md?`<span class="tag mode" style="--c:${md[1]}">${md[0]}</span>`:''}${arr(j.stack).slice(0,6).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}</div>`;
   }).join(''):'<div class="empty">Пока пусто. Вставь текст вакансии выше.</div>';
@@ -493,15 +604,81 @@ function render(){
   if(openId&&jobs[openId]&&$('ov').classList.contains('show')===false)openId=null;
 }
 $('jobs').onclick=e=>{
+  const du=e.target.closest('[data-dup]');
+  if(du){openDup(du.dataset.dup);return;}
   const st=e.target.closest('[data-fav]');
   if(st){const id=st.dataset.fav;update(ref(db,'jobs/'+id),{fav:!jobs[id].fav});return;}
   if(e.target.closest('a'))return;
   const c=e.target.closest('[data-id]');if(c)openJob(c.dataset.id);
 };
 
+/* ── сравнение повторов ── */
+function openDup(cid){
+  const cl=dupInfo.clusters[cid];if(!cl)return;
+  openId=null;
+  const ids=cl.ids.filter(i=>jobs[i]).sort((a,b)=>(jobs[a].ts||0)-(jobs[b].ts||0));
+  const best={},why=new Set();
+  for(const [key,r] of Object.entries(dupInfo.rel)){
+    const [x,y]=key.split('|');
+    if(!ids.includes(x)||!ids.includes(y))continue;
+    best[x]=Math.max(best[x]||0,r.score);best[y]=Math.max(best[y]||0,r.score);
+    r.why.forEach(w=>why.add(w));
+  }
+  const dom=u=>{u=safeUrl(u);try{return u?new URL(u).hostname.replace(/^www\./,''):'';}catch{return'';}};
+  const rows=[['Добавлена',j=>ago(j.ts),false],['Статус',j=>(ST[j.status]||ST.new)[0],true],['Зарплата',j=>fmtSal(j.salary),true],
+    ['Город',j=>j.location||'',true],['Формат',j=>(MODES[j.mode]||[])[0]||'',true],['Источник',j=>dom(j.url),true]];
+  const diff=rows.map(([,f,chk])=>chk&&new Set(ids.map(i=>f(jobs[i]))).size>1);
+  $('modal').classList.add('wide');
+  $('modal').innerHTML=`
+    <h2>Похоже на повтор</h2>
+    <p class="hint">Найдено вакансий: ${ids.length}. Желтым отмечены отличия. Оставь нужную, остальные удалятся, а заметки, письмо, даты и статус объединятся.</p>
+    <div class="dwhy">${[...why].map(w=>`<span>${esc(w)}</span>`).join('')}</div>
+    <div class="dgrid">${ids.map((id,n)=>{
+      const j=jobs[id],pct=Math.round((best[id]||0)*100);
+      return `<article class="dcard${n===0?' first':''}" style="--d:${n*90}ms">
+        <div class="dtop"><div class="dring"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="rbg" cx="22" cy="22" r="18"/><circle class="rfg" cx="22" cy="22" r="18" data-p="${pct}"/></svg><span>${pct}%</span></div>
+          <div><b>${esc(j.title)}</b><div class="meta" style="color:var(--mut)">${esc(j.company||'')}</div></div></div>
+        ${n===0?'<span class="tag" style="align-self:flex-start">Добавлена первой</span>':''}
+        <dl class="dfacts">${rows.map(([l,f],ri)=>{const v=f(j);return `<dt>${l}</dt><dd class="${diff[ri]?'diff':''}">${esc(v||'-')}</dd>`;}).join('')}</dl>
+        <div class="row"><button data-keep="${id}">Оставить эту</button><button class="ghost" data-open="${id}">Открыть</button></div>
+      </article>`;}).join('')}</div>
+    <div class="row"><button class="ghost" id="dnot">Это разные вакансии</button><span style="flex:1"></span><button class="ghost" id="dclose">Закрыть</button></div>`;
+  $('ov').classList.add('show');
+  $('modal').querySelectorAll('[data-keep]').forEach(b=>{b.onclick=()=>keepJob(b.dataset.keep,ids);});
+  $('modal').querySelectorAll('[data-open]').forEach(b=>{b.onclick=()=>openJob(b.dataset.open);});
+  $('dnot').onclick=()=>notDupes(ids);
+  $('dclose').onclick=closeJob;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    $('modal').querySelectorAll('.rfg').forEach(c=>{c.style.strokeDashoffset=String(113.1*(1-(+c.dataset.p)/100));});
+  }));
+}
+async function keepJob(keep,ids){
+  const others=ids.filter(i=>i!==keep);
+  if(!confirm('Оставить эту вакансию, а остальные ('+others.length+') удалить?'))return;
+  const K=jobs[keep],O=others.map(i=>jobs[i]).filter(Boolean),upd={};
+  const notes=[K.note,...O.map(o=>o.note)].filter(Boolean).filter((n,i,a)=>a.indexOf(n)===i);
+  if(notes.length>1||(notes[0]&&!K.note))upd.note=notes.join('\n\n');
+  if(!K.letter){const l=O.find(o=>o.letter);if(l)upd.letter=l.letter;}
+  if(!K.applied){const a=O.map(o=>o.applied).filter(Boolean).sort()[0];if(a)upd.applied=a;}
+  if(!K.follow){const f=O.map(o=>o.follow).filter(Boolean).sort().pop();if(f)upd.follow=f;}
+  if(!K.fav&&O.some(o=>o.fav))upd.fav=true;
+  const ORD=['new','applied','rejected','interview','offer'];
+  const top=[K,...O].map(x=>x.status||'new').sort((a,b)=>ORD.indexOf(b)-ORD.indexOf(a))[0];
+  if(top!==(K.status||'new'))upd.status=top;
+  const paths={};
+  Object.entries(upd).forEach(([k,v])=>{paths['jobs/'+keep+'/'+k]=v;});
+  others.forEach(i=>{paths['jobs/'+i]=null;});
+  try{await update(ref(db),paths);closeJob();toast('Повторы объединены');}catch(e){toast(e.message);}
+}
+async function notDupes(ids){
+  const paths={};
+  ids.forEach(a=>ids.forEach(b=>{if(a!==b)paths['jobs/'+a+'/notDup/'+b]=true;}));
+  try{await update(ref(db),paths);closeJob();toast('Отмечено: это разные вакансии');}catch(e){toast(e.message);}
+}
+
 /* ── карточка вакансии ── */
 function openJob(id){
-  const j=jobs[id];if(!j)return;openId=id;
+  const j=jobs[id];if(!j)return;openId=id;$('modal').classList.remove('wide');
   $('modal').innerHTML=`
     <h2>${esc(j.title)}</h2>
     <div class="meta" style="color:var(--mut)">${[j.company,j.location,j.salary].filter(Boolean).map(esc).join(' • ')}</div>
@@ -595,7 +772,7 @@ function start(){
   let dbOk=false;
   onValue(ref(db,'.info/connected'),s=>{if(s.val()===true){dbOk=true;$('dbwarn').hidden=true;}});
   setTimeout(()=>{if(!dbOk){$('dbwarn').hidden=false;$('dbwarn').textContent='Нет соединения с базой данных. Проверь databaseURL в index.html: он должен совпадать с адресом на странице Realtime Database в Firebase.';}},8000);
-  onValue(ref(db,'jobs'),s=>{jobs=s.val()||{};render();},e=>{$('dbwarn').hidden=false;$('dbwarn').textContent='База данных: '+e.message;});
+  onValue(ref(db,'jobs'),s=>{jobs=s.val()||{};computeDups();render();},e=>{$('dbwarn').hidden=false;$('dbwarn').textContent='База данных: '+e.message;});
   onValue(ref(db,'profile'),s=>{const p=s.val();if(p&&document.activeElement!==$('profile'))$('profile').value=p.text||'';});
   takePending();
 }
